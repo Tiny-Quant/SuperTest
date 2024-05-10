@@ -1,0 +1,48 @@
+---
+title: "Qualifying Exam"
+author: "Art Tay"
+format:
+  pdf:
+     documentclass: article
+     papersize: letter
+     geometry:
+         margin=1in
+     fontsize: 11pt
+     keep-tex: true
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+##Setup code
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Libraries
+library(tidyverse)
+library(magrittr)
+library(tidymodels)
+library(kableExtra)
+
+
+tidymodels_prefer()
+```
+
+# Introduction 
+
+# Analysis of Core Papers
+
+## GNNInterpreter 
+[@Wang_Shen_2024]
+
+## ProtGNN
+[@Zhang_Liu_Wang_Lu_Lee_2021]
+
+## D4Explainer
+[@Chen_Wu_Gupta_Ying_2023]
+
+# Synthesis of Core Papers
+
+# Technical Details 
+
+# Future Directions 
+
+# References
