@@ -191,10 +191,131 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[borderline west={3pt}{0pt}{shadecolor}, sharp corners, boxrule=0pt, frame hidden, breakable, interior hidden, enhanced]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[boxrule=0pt, sharp corners, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, breakable]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
+
+\begin{itemize}
+\item
+  Overview of the problem area.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Graphs are an important data structure.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      GRAPHS provide an incredibly flexible structure for modeling
+      complex data. Data can naturally appear as graphs, like molecules.
+      We can reduce data to a graph, such as the key points of a image.
+      We can even use graphs to add structure, such as grammatical
+      relationships.
+    \end{itemize}
+  \item
+    GNN models are good at prediction and inference on graph data.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      Graph Neural Networks (GNNs) have become a popular choice for
+      prediction and inference on graph data. At their core, GNNs work
+      by iteratively updating node embeddings based on information from
+      neighboring nodes. The idea is to use the graph's structure to
+      engineer better features. This message passing scheme allows GNNs
+      to capture complex dependencies and patterns present within the
+      graph structure. GNN architectures typically consist of multiple
+      layers, each performing message passing and aggregation operations
+      to refine the embeddings. These layers are often followed by
+      pooling and dense prediction layers to produce the final output.
+    \end{itemize}
+  \item
+    There are many important applications for graph classification
+    models.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      Some important applications of graph classification include
+      predicting chemical toxicity (Bai et al. 2019), classifying
+      proteins (Gallicchio and Micheli 2019), and even detecting cancer
+      from pathology slides (Xiao et al. 2023).
+    \end{itemize}
+  \item
+    \textbf{Problem:} While GNNs achieve remarkable predictive power,
+    their complexity prevents the exaction of the scientific rationale.
+  \end{itemize}
+\item
+  Why is the problem important?
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Explaining or interpreting GNN predictions would
+
+    \begin{itemize}
+    \tightlist
+    \item
+      help with the adoption of such models for critical applications,
+    \item
+      prevent adversarial attacks,
+    \item
+      detect potential implicit discrimination,
+    \item
+      guide scientific as well as machine learning research.
+    \end{itemize}
+  \end{itemize}
+\item
+  How does the problem relate to the fundamentals areas of Statistics?
+
+  \begin{itemize}
+  \item
+    Explain-ability vs Interpretability
+
+    \begin{itemize}
+    \tightlist
+    \item
+      Yuan et al. (2022)
+    \item
+      A model is interpretable if the models decision process can be
+      readily understood by humans. For example, a linear regression
+      model is interpretable because the coefficient clearly define how
+      any prediction get made.
+    \item
+      A model is explainable if the models prediction can be reasoned
+      post-hoc. Permuting each variable and measuring the variation in
+      the predictions can be used to estimate each variables marginal
+      effect {[}cite{]}.
+    \end{itemize}
+  \item
+    One goal would be to create a GNN type model whose decision process
+    is human interpretable. A straight translation from statistics would
+    be a circuit type analysis {[}cite{]}. For graphs, this would mean
+    some form of coefficients on subgraphs producing the prediction.
+  \item
+    Another goal might be to develope a method that determines if a
+    feature is statistical significant to the GNN model. The challenge
+    is that the graph features that matter to researchers aren't
+    necessarily tabular.
+  \end{itemize}
+\item
+  What is the impact of solving this problem?
+
+  \begin{itemize}
+  \item
+    In the application where GNNs have shown strong predictive power, we
+    can exact a testable scientific hypothesis for the nature of the
+    classification.
+  \item
+    In the application where GNNs have weak predictive power, highlight
+    the potential misunderstandings the model is having.
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{notation}{%
+\section{Notation}\label{notation}}
 
 \hypertarget{analysis-of-core-papers}{%
 \section{Analysis of Core Papers}\label{analysis-of-core-papers}}
@@ -204,21 +325,68 @@
 
 (Wang and Shen 2024)
 
-\hypertarget{protgnn}{%
-\subsection{ProtGNN}\label{protgnn}}
-
-(Zhang et al. 2021)
+\begin{itemize}
+\item
+  Note on model-level explanations.
+\item
+  Prediction objective.
+\item
+  Embedding objective.
+\item
+  Intuitive explanation of concrete distribution.
+\item
+  Regularization terms.
+\end{itemize}
 
 \hypertarget{d4explainer}{%
 \subsection{D4Explainer}\label{d4explainer}}
 
 (Chen et al. 2023)
 
+\begin{itemize}
+\item
+  Note on counter-factual explanations.
+\item
+  Graph diffusion.
+\end{itemize}
+
+\hypertarget{protgnn}{%
+\subsection{ProtGNN}\label{protgnn}}
+
+(Zhang et al. 2021)
+
 \hypertarget{synthesis-of-core-papers}{%
 \section{Synthesis of Core Papers}\label{synthesis-of-core-papers}}
 
+\begin{itemize}
+\tightlist
+\item
+  Comparison of generation methods.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    GNNInterpreter uses continuously relaxed discrete distributions.
+  \item
+    D4Explainer uses diffusion.
+  \item
+    Diffusion is slower, but can be more realistic. Probably because
+    diffusion is less subject to the \textbf{out-of-distribution (OOD)
+    problem}.
+  \item
+    Prototype projection are like generative methods. Restricted to in
+    distribution, but realism is all but guaranteed.
+  \end{itemize}
+\end{itemize}
+
 \hypertarget{technical-details}{%
 \section{Technical Details}\label{technical-details}}
+
+\begin{itemize}
+\tightlist
+\item
+  Minimal reproduction of each method on MUTAG.
+\end{itemize}
 
 \hypertarget{future-directions}{%
 \section{Future Directions}\label{future-directions}}
@@ -229,17 +397,40 @@
 
 \hypertarget{refs}{}
 \begin{CSLReferences}{1}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-bai2019unsupervised}{}}%
+Bai, Yunsheng, Hao Ding, Yang Qiao, Agustin Marinovic, Ken Gu, Ting
+Chen, Yizhou Sun, and Wei Wang. 2019. {``Unsupervised Inductive
+Graph-Level Representation Learning via Graph-Graph Proximity.''}
+\url{https://arxiv.org/abs/1904.01098}.
+
 \leavevmode\vadjust pre{\hypertarget{ref-Chen_Wu_Gupta_Ying_2023}{}}%
 Chen, Jialin, Shirley Wu, Abhijit Gupta, and Rex Ying. 2023.
 {``D4Explainer: In-Distribution GNN Explanations via Discrete Denoising
 Diffusion,''} no. arXiv:2310.19321 (October).
 \url{https://doi.org/10.48550/arXiv.2310.19321}.
 
+\leavevmode\vadjust pre{\hypertarget{ref-gallicchio2019fast}{}}%
+Gallicchio, Claudio, and Alessio Micheli. 2019. {``Fast and Deep Graph
+Neural Networks.''} \url{https://arxiv.org/abs/1911.08941}.
+
 \leavevmode\vadjust pre{\hypertarget{ref-Wang_Shen_2024}{}}%
 Wang, Xiaoqi, and Han-Wei Shen. 2024. {``GNNInterpreter: A Probabilistic
 Generative Model-Level Explanation for Graph Neural Networks,''} no.
 arXiv:2209.07924 (February).
 \url{https://doi.org/10.48550/arXiv.2209.07924}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Xiao_Wang_Rong_Yang_Zhang_Zhan_Bishop_Wilhelm_Zhang_Pickering_et_al._2023}{}}%
+Xiao, Guanghua, Shidan Wang, Ruichen Rong, Donghan Yang, Xinyi Zhang,
+Xiaowei Zhan, Justin Bishop, et al. 2023. \emph{Deep Learning of Cell
+Spatial Organizations Identifies Clinically Relevant Insights in Tissue
+Images}. Preprint. In Review.
+\url{https://doi.org/10.21203/rs.3.rs-2928838/v1}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Yuan_Yu_Gui_Ji_2022}{}}%
+Yuan, Hao, Haiyang Yu, Shurui Gui, and Shuiwang Ji. 2022.
+{``Explainability in Graph Neural Networks: A Taxonomic Survey,''} no.
+arXiv:2012.15445 (July).
+\url{https://doi.org/10.48550/arXiv.2012.15445}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-Zhang_Liu_Wang_Lu_Lee_2021}{}}%
 Zhang, Zaixi, Qi Liu, Hao Wang, Chengqiang Lu, and Cheekong Lee. 2021.

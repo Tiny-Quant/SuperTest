@@ -28,20 +28,84 @@ tidymodels_prefer()
 
 # Introduction 
 
+- Overview of the problem area.
+
+    - Graphs are an important data structure. 
+        - GRAPHS provide an incredibly flexible structure for modeling complex data. Data can naturally appear as graphs, like molecules. We can reduce data to a graph, such as the key points of a image. We can even use graphs to add structure, such as grammatical relationships.
+    
+    - GNN models are good at prediction and inference on graph data. 
+        - Graph Neural Networks (GNNs) have become a popular choice for prediction and inference on graph data. At their core, GNNs work by iteratively updating node embeddings based on information from neighboring nodes. The idea is to use the graph's structure to engineer better features. This message passing scheme allows GNNs to capture complex dependencies and patterns present within the graph structure. GNN architectures typically consist of multiple layers, each performing message passing and aggregation operations to refine the embeddings. These layers are often followed by pooling and dense prediction layers to produce the final output.
+
+    - There are many important applications for graph classification models. 
+        - Some important applications of graph classification include predicting chemical toxicity [@bai2019unsupervised], classifying proteins [@gallicchio2019fast], and even detecting cancer from pathology slides [@Xiao_Wang_Rong_Yang_Zhang_Zhan_Bishop_Wilhelm_Zhang_Pickering_et_al._2023]. 
+    
+    - **Problem:** While GNNs achieve remarkable predictive power, their complexity prevents the exaction of the scientific rationale.
+
+- Why is the problem important? 
+
+    - Explaining or interpreting GNN predictions would 
+        - help with the adoption of such models for critical applications, 
+        - prevent adversarial attacks, 
+        - detect potential implicit discrimination, 
+        - guide scientific as well as machine learning research. 
+
+
+- How does the problem relate to the fundamentals areas of Statistics? 
+
+    - Explain-ability vs Interpretability  
+        - @Yuan_Yu_Gui_Ji_2022 
+        - A model is interpretable if the models decision process can be readily understood by humans. For example, a linear regression model is interpretable because the coefficient clearly define how any prediction get made. 
+        - A model is explainable if the models prediction can be reasoned post-hoc. Permuting each variable and measuring the variation in the predictions can be used to estimate each variables marginal effect [cite]. 
+
+    - One goal would be to create a GNN type model whose decision process is human interpretable. A straight translation from statistics would be a circuit type analysis [cite]. For graphs, this would mean some form of coefficients on subgraphs producing the prediction. 
+
+    - Another goal might be to develope a method that determines if a feature is statistical significant to the GNN model. The challenge is that the graph features that matter to researchers aren't necessarily tabular.  
+
+- What is the impact of solving this problem? 
+    - In the application where GNNs have shown strong predictive power, we can exact a testable scientific hypothesis for the nature of the classification.  
+
+    - In the application where GNNs have weak predictive power, highlight the potential misunderstandings the model is having. 
+
+# Notation 
+
+
+
 # Analysis of Core Papers
 
 ## GNNInterpreter 
 [@Wang_Shen_2024]
 
-## ProtGNN
-[@Zhang_Liu_Wang_Lu_Lee_2021]
+- Note on model-level explanations.
+
+- Prediction objective. 
+
+- Embedding objective. 
+
+- Intuitive explanation of concrete distribution. 
+
+- Regularization terms.   
 
 ## D4Explainer
 [@Chen_Wu_Gupta_Ying_2023]
 
+- Note on counter-factual explanations. 
+
+- Graph diffusion. 
+
+## ProtGNN
+[@Zhang_Liu_Wang_Lu_Lee_2021]
+
 # Synthesis of Core Papers
 
+- Comparison of generation methods. 
+    - GNNInterpreter uses continuously relaxed discrete distributions. 
+    - D4Explainer uses diffusion. 
+    - Diffusion is slower, but can be more realistic. Probably because diffusion is less subject to the **out-of-distribution (OOD) problem**. 
+    - Prototype projection are like generative methods. Restricted to in distribution, but realism is all but guaranteed. 
+
 # Technical Details 
+
+- Minimal reproduction of each method on MUTAG. 
 
 # Future Directions 
 
