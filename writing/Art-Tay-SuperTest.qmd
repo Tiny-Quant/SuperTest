@@ -9,6 +9,7 @@ format:
          margin=1in
      fontsize: 11pt
      keep-tex: true
+     include-in-header: header.tex
 bibliography: references.bib
 ---
 
@@ -68,22 +69,102 @@ tidymodels_prefer()
 
 # Notation 
 
+- Let $G$ denote a graph. 
 
+- Any graph $G$ can be describe by $X, A, E$. The node feature
+matrix, edge feature matrix, and adjacency matrix respectively 
+
+- Let $X = [X_c, \ X_d]$, where $X_c$ is the subset of continuous node features and $X_d$ is the subset of one-hot discrete node features.  
+
+- Let $E = [E_c, \ E_d]$, denoted in the same manner. 
+
+- Let $n$ represent the number of nodes in the graph and $v$ represent the 
+number of edges.  
+
+- Let $\text{feat}_{(.)}$ denote the number of features or columns in the the corresponding feature matrix.  
+
+- $A$ is a binary $n \times n$ matrix where $A[i, \ j] = 1$ indicates that an edge exists between nodes labeled $i$ and $j$.  
+
+- Let $\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G$ be an $L$ layer GNN model with parameters $\Omega$ that we would like to explain. 
 
 # Analysis of Core Papers
 
 ## GNNInterpreter 
 [@Wang_Shen_2024]
 
-- Note on model-level explanations.
+- Overview
+    - Instance v. Model Level 
+        - In general, explanation methods serve to elucidate which
+        features within the data influence disparate predictions. These
+        methods typically fall into two categories: instance-level and
+        model-level. Instance-level explanations aim to unveil the
+        model’s rationale behind a particular prediction. In domains
+        such as image and text analysis, a prevalent approach involves
+        masking or perturbing the instance and assessing the
+        impact on the model’s prediction. On the other hand, model-level
+        explanations seek to understand how a model generally
+        distinguishes between classes. In image and text analysis, for
+        instance, one common technique involves treating the input as
+        a trainable parameter and optimizing the model’s prediction
+        towards a specific class. Consequently, the resulting optimized
+        input comprises a set of features strongly associated with
+        the targeted class.
+
+    - GNNInterpreter provides model level explanations for GNN in this manner. 
+
+    - Formally, GNNInterpreter tries to learn the graph generating distribution for each class. 
+
+    - GNNInterpreter works by optimizing the parameters of a generic graph generating distribution to produce samples that closely match the explainee's understanding of the targeted class.
+
+- Explanation of the graph generating distribution.  
+    - Graph generating distributions are hard to specify because there can be discrete and continuous elements of $X$, $E$ and $A$. Furthermore, the interactions between these matrices can be complex.    
+
+    - The authors tackle these issues by making two simplify assumptions.   
+        1. Assume that $G$ is a *Gilbert* random graph, every possible edge as an independent fixed probability of occurring. 
+            $$
+                \forall (i, \ j) \neq (k, l) \
+                    Pr(A[i, \ j] = 1) \perp Pr(A[k, \ l] = 1)
+            $$   
+        
+        2. The features of every node and edge are independently distributed.   
+
+    - The author justify these assumptions by: 
+        1. The other graph distributions aren't suitable. 
+            a. Erdo-Renyi graphs have a fixed number of edges and nodes.   
+            b. Rado graphs are infinite in size. 
+            c. The random dot-product graph model is just a generalization of Gilbert random graphs.   
+
+        2. Because the parameters of the independent distributions will be updated jointly using the *explainee* model, the *explainee's* understanding of the latent correlation structure should be contained in the final estimates.  
+
+    - $X_c$ and $E_c$ can be sampled from any continuous distribution that can be expressed as a location-scale family. Separating the stochastic and systematic components is necessary for gradient based optimization. It is commonly known as the "re-parametrization trick". 
+
+    - $X_d$, $E_d$ as well as $A$ need to be sampled from a continuous distribution for gradient based optimization, but the distribution has to have sampling properties close to a discrete distribution.  
+
+    - The author assume that the true underlying distribution for every discrete node and edge feature is *categorical*. The categorical distribution is also know as the multi-bernoulli, where every sample has a fixed probability of being in one of the discrete categories. This distribution as a continuous approximation known as the Gumbel-Softmax [cite]. The standard Gumbel or extreme value distribution is equivalent to the density of the maximum order statistic of a standard normal. Adding Gumbel noise to categorical probabilities creates random samples 
 
 - Prediction objective. 
+    - Notate the graph generating distribution as: 
+        $$
+        G_{\text{gen}} \sim \text{gen}(\Theta)  
+        $$
+
+    - An obvious objective is to maximize the likelihood that the *explainee* model predicts a sampled graph to be a member of the target class.
+
+    - Let $\tilde{\rho}$ denote the desired predicted probability vector. Then the above objective can be expressed as: 
+    $$
+        \underset{\Theta}{\text{argmin}} \ 
+            \mathcal{L}_{\text{pred}}(\Theta) = 
+            \mathams{E}_{G_{\text{gen}}} \ 
+                \text{CrtEnt}(\text{explainee}(G_{\text{gen}}), \tilde{\rho})
+    $$
 
 - Embedding objective. 
-
-- Intuitive explanation of concrete distribution. 
+    - The authors note that ...
 
 - Regularization terms.   
+
+- Summary of Results + Figures
+    - Metrics 
 
 ## D4Explainer
 [@Chen_Wu_Gupta_Ying_2023]
@@ -108,5 +189,7 @@ tidymodels_prefer()
 - Minimal reproduction of each method on MUTAG. 
 
 # Future Directions 
+
+\pagebreak
 
 # References

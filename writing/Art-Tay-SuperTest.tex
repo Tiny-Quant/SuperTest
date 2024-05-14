@@ -102,6 +102,8 @@
 \newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
 \newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
 
+\usepackage{amsfonts}
+\DeclareMathAlphabet{\mathams}{U}{msb}{m}{n}
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
@@ -191,7 +193,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[boxrule=0pt, sharp corners, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, breakable]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[breakable, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, sharp corners, boxrule=0pt]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -317,6 +319,34 @@
 \hypertarget{notation}{%
 \section{Notation}\label{notation}}
 
+\begin{itemize}
+\item
+  Let \(G\) denote a graph.
+\item
+  Any graph \(G\) can be describe by \(X, A, E\). The node feature
+  matrix, edge feature matrix, and adjacency matrix respectively
+\item
+  Let \(X = [X_c, \ X_d]\), where \(X_c\) is the subset of continuous
+  node features and \(X_d\) is the subset of one-hot discrete node
+  features.
+\item
+  Let \(E = [E_c, \ E_d]\), denoted in the same manner.
+\item
+  Let \(n\) represent the number of nodes in the graph and \(v\)
+  represent the number of edges.
+\item
+  Let \(\text{feat}_{(.)}\) denote the number of features or columns in
+  the the corresponding feature matrix.
+\item
+  \(A\) is a binary \(n \times n\) matrix where \(A[i, \ j] = 1\)
+  indicates that an edge exists between nodes labeled \(i\) and \(j\).
+\item
+  Let
+  \(\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G\)
+  be an \(L\) layer GNN model with parameters \(\Omega\) that we would
+  like to explain.
+\end{itemize}
+
 \hypertarget{analysis-of-core-papers}{%
 \section{Analysis of Core Papers}\label{analysis-of-core-papers}}
 
@@ -327,15 +357,150 @@
 
 \begin{itemize}
 \item
-  Note on model-level explanations.
+  Overview
+
+  \begin{itemize}
+  \item
+    Instance v. Model Level
+
+    \begin{itemize}
+    \tightlist
+    \item
+      In general, explanation methods serve to elucidate which features
+      within the data influence disparate predictions. These methods
+      typically fall into two categories: instance-level and
+      model-level. Instance-level explanations aim to unveil the model's
+      rationale behind a particular prediction. In domains such as image
+      and text analysis, a prevalent approach involves masking or
+      perturbing the instance and assessing the impact on the model's
+      prediction. On the other hand, model-level explanations seek to
+      understand how a model generally distinguishes between classes. In
+      image and text analysis, for instance, one common technique
+      involves treating the input as a trainable parameter and
+      optimizing the model's prediction towards a specific class.
+      Consequently, the resulting optimized input comprises a set of
+      features strongly associated with the targeted class.
+    \end{itemize}
+  \item
+    GNNInterpreter provides model level explanations for GNN in this
+    manner.
+  \item
+    Formally, GNNInterpreter tries to learn the graph generating
+    distribution for each class.
+  \item
+    GNNInterpreter works by optimizing the parameters of a generic graph
+    generating distribution to produce samples that closely match the
+    explainee's understanding of the targeted class.
+  \end{itemize}
+\item
+  Explanation of the graph generating distribution.
+
+  \begin{itemize}
+  \item
+    Graph generating distributions are hard to specify because there can
+    be discrete and continuous elements of \(X\), \(E\) and \(A\).
+    Furthermore, the interactions between these matrices can be complex.
+  \item
+    The authors tackle these issues by making two simplify assumptions.
+
+    \begin{enumerate}
+    \def\labelenumi{\arabic{enumi}.}
+    \item
+      Assume that \(G\) is a \emph{Gilbert} random graph, every possible
+      edge as an independent fixed probability of occurring. \[
+           \forall (i, \ j) \neq (k, l) \
+               Pr(A[i, \ j] = 1) \perp Pr(A[k, \ l] = 1)
+       \]
+    \item
+      The features of every node and edge are independently distributed.
+    \end{enumerate}
+  \item
+    The author justify these assumptions by:
+
+    \begin{enumerate}
+    \def\labelenumi{\arabic{enumi}.}
+    \tightlist
+    \item
+      The other graph distributions aren't suitable.
+
+      \begin{enumerate}
+      \def\labelenumii{\alph{enumii}.}
+      \tightlist
+      \item
+        Erdo-Renyi graphs have a fixed number of edges and nodes.\\
+      \item
+        Rado graphs are infinite in size.
+      \item
+        The random dot-product graph model is just a generalization of
+        Gilbert random graphs.
+      \end{enumerate}
+    \item
+      Because the parameters of the independent distributions will be
+      updated jointly using the \emph{explainee} model, the
+      \emph{explainee's} understanding of the latent correlation
+      structure should be contained in the final estimates.
+    \end{enumerate}
+  \item
+    \(X_c\) and \(E_c\) can be sampled from any continuous distribution
+    that can be expressed as a location-scale family. Separating the
+    stochastic and systematic components is necessary for gradient based
+    optimization. It is commonly known as the ``re-parametrization
+    trick''.
+  \item
+    \(X_d\), \(E_d\) as well as \(A\) need to be sampled from a
+    continuous distribution for gradient based optimization, but the
+    distribution has to have sampling properties close to a discrete
+    distribution.
+  \item
+    The author assume that the true underlying distribution for every
+    discrete node and edge feature is \emph{categorical}. The
+    categorical distribution is also know as the multi-bernoulli, where
+    every sample has a fixed probability of being in one of the discrete
+    categories. This distribution as a continuous approximation known as
+    the Gumbel-Softmax {[}cite{]}. The standard Gumbel or extreme value
+    distribution is equivalent to the density of the maximum order
+    statistic of a standard normal. Adding Gumbel noise to categorical
+    probabilities creates random samples
+  \end{itemize}
 \item
   Prediction objective.
+
+  \begin{itemize}
+  \item
+    Notate the graph generating distribution as: \[
+      G_{\text{gen}} \sim \text{gen}(\Theta)  
+      \]
+  \item
+    An obvious objective is to maximize the likelihood that the
+    \emph{explainee} model predicts a sampled graph to be a member of
+    the target class.
+  \item
+    Let \(\tilde{\rho}\) denote the desired predicted probability
+    vector. Then the above objective can be expressed as: \[
+      \underset{\Theta}{\text{argmin}} \ 
+          \mathcal{L}_{\text{pred}}(\Theta) = 
+          \mathams{E}_{G_{\text{gen}}} \ 
+              \text{CrtEnt}(\text{explainee}(G_{\text{gen}}), \tilde{\rho})
+      \]
+  \end{itemize}
 \item
   Embedding objective.
-\item
-  Intuitive explanation of concrete distribution.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    The authors note that \ldots{}
+  \end{itemize}
 \item
   Regularization terms.
+\item
+  Summary of Results + Figures
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Metrics
+  \end{itemize}
 \end{itemize}
 
 \hypertarget{d4explainer}{%
@@ -390,6 +555,8 @@
 
 \hypertarget{future-directions}{%
 \section{Future Directions}\label{future-directions}}
+
+\pagebreak
 
 \hypertarget{references}{%
 \section*{References}\label{references}}
