@@ -193,7 +193,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[breakable, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, sharp corners, boxrule=0pt]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, boxrule=0pt, frame hidden, breakable, borderline west={3pt}{0pt}{shadecolor}, sharp corners, enhanced]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -456,20 +456,100 @@
     discrete node and edge feature is \emph{categorical}. The
     categorical distribution is also know as the multi-bernoulli, where
     every sample has a fixed probability of being in one of the discrete
-    categories. This distribution as a continuous approximation known as
-    the Gumbel-Softmax {[}cite{]}. The standard Gumbel or extreme value
-    distribution is equivalent to the density of the maximum order
-    statistic of a standard normal. Adding Gumbel noise to categorical
-    probabilities creates random samples
+    categories.
+  \item
+    Suppose there are \(D\) categories with probabilities
+    \(\pi_\omega = \dfrac{\theta_\omega}{\sum_{i \in D}\theta_i}\). Then
+    \[
+      I = \underset{i \in D}{\text{argmax}} \ \log \theta_i + G^{(i)} 
+          \sim \text{Cat}(\pi)
+      \] where \(G^{(i)} \overset{i.i.d.}{\sim} \text{Gumbel}(0, 1)\).
+  \item
+    The intuition is that the Gumbel or extreme value distribution is
+    the density of the maximum order statistic of i.i.d. standard
+    normals which makes it a good candidate for model the winning or
+    maximum probability category. Adding Gumbel noise to the logits
+    should maintain the true relative proportions, but enough skewness
+    such that every category has some probability of having the maximum
+    noised logit.
+  \item
+    \textbf{Proof 1:} In order for \(I\) to be a true categorical
+    distribution, \(Pr[I = \omega] = \pi_\omega\). \(I = \omega\) if and
+    only if
+    \(\log \theta_\omega + G^{(\omega)} > \log \theta_i + G^{i} \   \forall i \in D \setminus \omega\).
+    Let \(M_i\) denote a random variable that follows a
+    \(\text{Gumbel}(\log \theta_i, 1)\) distribution. \begin{align*}
+      Pr[I = \omega] 
+          &= \mathams{E}_{M_\omega} 
+              \prod_{i \in D \setminus \omega} Pr(M_i < m_\omega) 
+              \text{ i.i.d location shifted Gumbel distributions.} \\ 
+          &= \mathams{E}_{M_\omega} 
+              \prod_{i \in D \setminus \omega} \exp 
+                  \left(-e^{\log \theta_i - m_\omega} \right)
+              \text{ Gumbel CDF.} \\ 
+          &= \mathams{E}_{M_\omega} 
+              \exp \left(-\sum_{i \in D \setminus \omega}
+              e^{\log \theta_i - m_\omega} \right) \\ 
+          &= \int_{-\infty}^{\infty}
+              \exp \left( \log \theta_\omega - m_\omega \right) 
+              \exp \left(-e^{\log \theta_\omega - m_\omega} \right) \cdot 
+              \exp \left (-\sum_{i \in D \setminus \omega}
+              e^{\log \theta_i - m_\omega} \right) \ dm \\
+              &\text{ Gumbel PDF.} \\
+          &= \int_{-\infty}^{\infty}
+              \exp \left( \log \theta_\omega - m_\omega \right) 
+              \exp \left (-\sum_{i \in D}
+              e^{\log \theta_i - m_\omega} \right) \ dm \\
+          &= \int_{-\infty}^{\infty}
+              \theta_\omega 
+              \exp \left( -m_\omega \right) 
+              \exp \left( -e^{-m_\omega} \sum_{i \in D}
+                  \theta_i  \right) \ dm \\
+          &= \pi_\omega \sum_{i \in D} \theta_i
+          \int_{-\infty}^{\infty}
+              \exp \left( -m_\omega \right) 
+              \exp \left( -e^{-m_\omega} \sum_{i \in D}
+                  \theta_i  \right) \ dm 
+                  \text{ From the above definition of } \pi_\omega \\
+          &= \pi_\omega \sum_{i \in D} \theta_i
+              \dfrac{\exp\left( -e^{-m_\omega} \sum_{i \in D} \theta_i \right)
+                  }{\sum_{i \in D} \theta_i} \bigg|_{-\infty}^\infty \\ 
+          &= \pi_\omega \sum_{i \in D} \theta_i
+              \dfrac{1}{\sum_{i \in D} \theta_i} = \pi_\omega
+      \end{align*} Reference: Huijben et al. (2022)
+  \item
+    Using inverse CDF sampling and and relaxing the argmax to a Softmax,
+    we can sample one-hot categorical vectors based on two parameters
+    \(\theta_{\text{Cat}}\), a trainable parameter vector of length
+    equal to the number of categories, and \(\tau\), a hyperparameter
+    that controls the degree of relaxation (smaller value approximate
+    the discrete sampling better, but can result in numerical issues).
+    \[
+      \text{Softmax}
+      \left(
+          \dfrac{\theta_{\text{Cat}} - log(-log \ \epsilon)}{\tau}
+      \right), \quad \epsilon \sim U[0, 1]
+      \] This method, known as the concrete distribution (Maddison,
+    Mnih, and Teh 2017), yields a reasonable smooth gradient w.r.t. to
+    the probability parameters.
+  \item
+    The adjacency matrix can be sampled in a similar manner since the
+    Bernoulli is just a special case of the categorical.\\
+    \[
+      \text{sigmoid}
+          \left(\dfrac{\theta_A + \log \ \epsilon - \log(1 - \log \ \epsilon)}{\tau} \right)
+      \] This is known as the binary concrete distribution (Maddison,
+    Mnih, and Teh 2017).
+  \item
+    Notate the combined graph generating distribution as: \[
+      G_{\text{gen}} \sim \text{gen}(\Theta)  
+      \] where \(\Theta\) is the set of all parameters from the
+    independently sampled distributions.
   \end{itemize}
 \item
   Prediction objective.
 
   \begin{itemize}
-  \item
-    Notate the graph generating distribution as: \[
-      G_{\text{gen}} \sim \text{gen}(\Theta)  
-      \]
   \item
     An obvious objective is to maximize the likelihood that the
     \emph{explainee} model predicts a sampled graph to be a member of
@@ -579,6 +659,18 @@ Diffusion,''} no. arXiv:2310.19321 (October).
 \leavevmode\vadjust pre{\hypertarget{ref-gallicchio2019fast}{}}%
 Gallicchio, Claudio, and Alessio Micheli. 2019. {``Fast and Deep Graph
 Neural Networks.''} \url{https://arxiv.org/abs/1911.08941}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Huijben_Kool_Paulus_van_Sloun_2022}{}}%
+Huijben, Iris A. M., Wouter Kool, Max B. Paulus, and Ruud J. G. van
+Sloun. 2022. {``A Review of the Gumbel-Max Trick and Its Extensions for
+Discrete Stochasticity in Machine Learning,''} no. arXiv:2110.01515
+(March). \url{https://doi.org/10.48550/arXiv.2110.01515}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Maddison_Mnih_Teh_2017}{}}%
+Maddison, Chris J., Andriy Mnih, and Yee Whye Teh. 2017. {``The Concrete
+Distribution: A Continuous Relaxation of Discrete Random Variables,''}
+no. arXiv:1611.00712 (March).
+\url{https://doi.org/10.48550/arXiv.1611.00712}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-Wang_Shen_2024}{}}%
 Wang, Xiaoqi, and Han-Wei Shen. 2024. {``GNNInterpreter: A Probabilistic
