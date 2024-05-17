@@ -87,6 +87,8 @@ number of edges.
 
 - Let $\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G$ be an $L$ layer GNN model with parameters $\Omega$ that we would like to explain. 
 
+- For any graph Let $\nu$ denote the set of node and $\mathcal{E}$ denote the set of edges. 
+
 # Analysis of Core Papers
 
 ## GNNInterpreter 
@@ -121,10 +123,9 @@ number of edges.
 
     - The authors tackle these issues by making two simplify assumptions.   
         1. Assume that $G$ is a *Gilbert* random graph, every possible edge as an independent fixed probability of occurring. 
-            $$
-                \forall (i, \ j) \neq (k, l) \
-                    Pr(A[i, \ j] = 1) \perp Pr(A[k, \ l] = 1)
-            $$   
+            \begin{equation}
+                \forall (i, \ j) \neq (k, l) \ Pr(A[i, \ j] = 1) \perp Pr(A[k, \ l] = 1)
+            \end{equation}
         
         2. The features of every node and edge are independently distributed.   
 
@@ -145,10 +146,10 @@ number of edges.
     - Suppose there are $D$ categories with probabilities 
     $\pi_\omega = \dfrac{\theta_\omega}{\sum_{i \in D}\theta_i}$.
     Then 
-    $$
-        I = \underset{i \in D}{\text{argmax}} \ \log \theta_i + G^{(i)} 
-            \sim \text{Cat}(\pi)
-    $$
+        \begin{equation}
+            I = \underset{i \in D}{\text{argmax}} \ \log \theta_i + G^{(i)} 
+                \sim \text{Cat}(\pi)
+        \end{equation}
     where $G^{(i)} \overset{i.i.d.}{\sim} \text{Gumbel}(0, 1)$. 
 
     - The intuition is that the Gumbel or extreme value distribution is the density of the maximum order statistic of i.i.d. standard normals which makes it a good candidate for model the winning or maximum probability category. Adding Gumbel noise to the logits should maintain the true relative proportions, but enough skewness such that every category has some probability of having the maximum noised logit.  
@@ -207,52 +208,105 @@ number of edges.
     the number of categories, and $\tau$, a hyperparameter that controls 
     the degree of relaxation (smaller value approximate the discrete 
     sampling better, but can result in numerical issues). 
-    $$
-        \text{Softmax}
-        \left(
-            \dfrac{\theta_{\text{Cat}} - log(-log \ \epsilon)}{\tau}
-        \right), \quad \epsilon \sim U[0, 1]
-    $$
+        \begin{equation}
+            \text{Softmax}
+            \left(
+                \dfrac{\theta_{\text{Cat}} - log(-log \ \epsilon)}{\tau}
+            \right), \quad \epsilon \sim U[0, 1]
+        \end{equation}
     This method, known as the concrete distribution [@Maddison_Mnih_Teh_2017], yields a reasonable smooth gradient w.r.t. to the probability parameters. 
 
     - The adjacency matrix can be sampled in a similar manner since the Bernoulli is just a special case of the categorical.   
-    $$
-        \text{sigmoid}
-            \left(\dfrac{\theta_A + \log \ \epsilon - \log(1 - \log \ \epsilon)}{\tau} \right)
-    $$
+        \begin{equation}
+            \text{sigmoid}
+                \left(\dfrac{\theta_A + \log \ \epsilon - \log(1 - \log \ \epsilon)}{\tau} \right)
+        \end{equation}
     This is known as the binary concrete distribution [@Maddison_Mnih_Teh_2017]. 
 
     - Notate the combined graph generating distribution as: 
+
         $$
         G_{\text{gen}} \sim \text{gen}(\Theta)  
         $$
+
         where $\Theta$ is the set of all parameters from the independently sampled distributions. 
 
 - Prediction objective. 
     - An obvious objective is to maximize the likelihood that the *explainee* model predicts a sampled graph to be a member of the target class.
 
     - Let $\tilde{\rho}$ denote the desired predicted probability vector. Then the above objective can be expressed as: 
-    $$
-        \underset{\Theta}{\text{argmin}} \ 
-            \mathcal{L}_{\text{pred}}(\Theta) = 
-            \mathams{E}_{G_{\text{gen}}} \ 
-                \text{CrtEnt}(\text{explainee}(G_{\text{gen}}), \tilde{\rho})
-    $$
+
+    \begin{equation}
+        \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrtEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
+    \end{equation}
 
 - Embedding objective. 
-    - The authors note that ...
+    - While the above objective enforces a desirable property, it isn't restrictive enough to make the generated graph realistic. This is because the final prediction, $\rho_{G_{\text{gen}}}$ is compute using only final embeddings, $h^{(L)}_{G_{\text{gen}}}$. Normally $h^{(L)}_{G_{\text{gen}}}$ contains all the needed information from the graphs structure; however, the generation scheme allows the feature distribution to be optimized directly. This means that explanation can ignore the graph structure and optimize towards the desired final embeddings.
+
+    - Another way of understanding the problems with the above objective is to consider the *out-of-distribution* (ood) issue. Since the above generation scheme is not restricted by the observed data distribution, the initial generated graphs may be very ood, but clearly on one side of the decision boundary.   
+
+    - The author find that empirically GNN model exhibit a class preference.   
+    ![](figures/random_baseline.png){fig-align="center"}
+    [@Wang_Shen_2024]
+
+    For example, random graphs have an average predicted probability of being Non-mutagenic in the MUTAG dataset if 93.2%. This demonstrates why the above objective is insufficient to generate realistic or *in-distribution* (id) graph. 
+
+    - In order to mitigate this issue, the author proposed additional minimizing the cosine distance between the average embedding of all the observed graph from the targeted class, $\bar h^{(L)}_{G_c}$, and the embedding of the generated explanation. 
+
+    \begin{equation}
+       \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right)
+    \end{equation}
 
 - Regularization terms.   
+    - Sparse graphs are easy for humans to interpret. To encourage sparsity the authors employed an $L_1$, $L_2$, and a budget penalty on the edge probabilities.
+
+    \begin{equation}
+        \mathcal{L}_{\text{Sparsity}}(\theta_A) = ||\theta_A||_1 + ||\theta_A||_2 + \text{softplus}(\text{sigmoid}||\theta_A||_1 - B)^2
+    \end{equation}
+    where $B$ is the expected maximum number of edge for generated explanation graphs.
+
+    - Connectivity is another desirable property as it ensures a cohesive explanation.
+    To encourage connectivity the author minimize the *KL-Divergence* between edge probabilities that share a common node.
+
+    \begin{equation}
+        \mathcal{L}_{\text{Connect}}(\theta_A) = \sum_{i \in \nu} \sum_{j, k \in \mathcal{E}(i)} D_{KL}(\text{sigmoid}(\theta_A[i, \ j]) \ || \ \text{sigmoid}(\theta_A[i, \ k]))
+    \end{equation}
+
+    where $\mathcal{E}(i)$ is the set of edges that connect to node $i$.
 
 - Summary of Results + Figures
-    - Metrics 
+    - The final generator model is trained by sampling $G_\text{gen} \sim \text{gen}(\Theta)$ and then iterative updated $\Theta$ via gradient descent on the full loss:
+    \begin{equation}
+        \begin{split}
+            \mathcal{L}_{\text{GNNInterpreter}}(\Theta \ | \ G_\text{gen}) = 
+            &\mathcal{L}_{\text{pred}}(\Theta \ | \ G_\text{gen}) + 
+            \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) +  \\
+            &\mathcal{L}_{\text{sparsity}}(\Theta \ | \ G_\text{gen}) +
+            \mathcal{L}_{\text{connect}}(\Theta \ | \ G_\text{gen}) 
+        \end{split}
+    \end{equation}
+
+    ![](figures/GNNInt_prediction_results.png){fig-align="center"}
+
+    - GNNInterpreter achieve remarkable accuracy on most target classes. Many of the interval are tight and very close to 1, which implies that the examples generated are almost always classified as the targeted class. The explanations for the house motif and the lollipop shape are worse in terms of predictions. Although the author critique the use of predictions as the sole objective, they do not use any other quantitative metric to evaluate the validity of their explanations. 
+
+    ![](figures/GNNInt_drawn_results.png){fig-align="center"}
+    - Qualitatively we can see some limitation in terms of realism. 
+    
+    - For example, for the mutagen class, the explanation correctly identifies the importance of the N02 group; however, the generated graph isn't realistic and might not even be chemically possible. Furthermore, the non-mutagen example doesn't display any clear patterns or identifiable structures.   
+
+    - The explanations for the Cyclicity dataset as well as the Wheel class do not appear to be members of the underlying data distribution. 
+
+    - GNNInterpreter provides a way of generating example graph that would be classified as a target class by a GNN model, without needing to specify domain specific rules. On the other hand, optimizing predictions and even embeddings does not appear to be a sufficient objective for producing in-distribution graphs. The author correctly point out that optimizing predictions can lead to unrealistic graphs, but they have also inadvertently demonstrated that optimizing embeddings is not necessarily sufficient either.       
 
 ## D4Explainer
 [@Chen_Wu_Gupta_Ying_2023]
-
-- Note on counter-factual explanations. 
+- Overview
+    - D4Explainer or in-Distribution GNN explanations via Discrete Denoising Diffusion attempt to directly address the realism of generated graphs in model-level explanation by using the observed data to train a Diffusion model. In the image domain, diffusion model have been shown to produce the most realistic images when compared to other generative AI methods such as Generative Adversarial Networks (GANs). Diffusion model work by iteratively noising an observation until it is pure noise. Then a denoising model is trained to predict the noise added at any given time step. Then new observations can be generated by passing pure noise through the diffusion model in a process known as reverse sampling. Additional label information can be passed to generate observations with similar a label. 
 
 - Graph diffusion. 
+
+- Note on counter-factual explanations. 
 
 ## ProtGNN
 [@Zhang_Liu_Wang_Lu_Lee_2021]
