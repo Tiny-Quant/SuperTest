@@ -478,9 +478,51 @@ number of edges.
 
     - To access how well a sampled explanation matches the observed graph distribution, the author compute various maximum mean discrepancy (mmd) statistics. 
 
-    -  
+    - MMD is a general technique to compute the distance between two distributions of data using only observed data. The distributions are estimated using a kernel an then the distance between there means are compared. 
+
+    - A common way to approximate a density is to use the average of Gaussian distributions centered at each observation: 
+    \begin{align*}
+        f(x)_X 
+            &\approx \dfrac 1 n \dfrac{1}{\sqrt{2\pi}\sigma} 
+            \sum_{i = 1}^n e^{\dfrac{-(x - x_i)^2}{2\sigma^2}} \\
+            &\approx \dfrac 1 n \dfrac{1}{\sqrt{2\pi}\sigma} 
+            \sum_{i = 1}^n \phi(x)^T \phi(x_i) 
+    \end{align*}
+    where, $k(x_i, x_j) = \phi^T(x_i)^T \phi(x_j)$ is the Gaussian kernel function. As long as the chosen kernel is *characteristic* the kernel mean embedding
+    $$
+        \dfrac 1 n \sum_{i = 1}^n \phi(x_i)^T = 
+            \dfrac{1}{n} \phi(\vec{x}) \mathbb{1}
+    $$
+    is representative of the distribution. Here $\vec x$ is the vector of observations and $\mathbb{1}$ is the appropriate dimensional vector of 1s. 
+
+    - MMD statistics are then simple the l2 distance between the kernel mean embeddings:
+    \begin{align*}
+         MMD(\vec x, \vec y) 
+            &= 
+            || 
+            \dfrac{1}{n} \phi(\vec{x}) \mathbb{1} - 
+            \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
+            ||^2_2 \\
+            &= 
+            (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+            \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
+            (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+            \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
+            ||^2_2 \\ 
+            &= 
+            \dfrac{1}{n^2} \phi(\vec{x})^T \phi(\vec{x}) + 
+            \dfrac{1}{m^2} \phi(\vec{y})^T \phi(\vec{y}) - 
+            \dfrac{2}{nm} \phi(\vec{x})^T \phi(\vec{y})
+    \end{align*}
+
+    - Intuitively $\phi(\vec{x})^T \phi(\vec{x})$ and 
+    $\phi(\vec{y})^T \phi(\vec{y})$ can be thought of as the distance within the observations of $x$ and $y$ and $\phi(\vec{x})^T \phi(\vec{y})$ as the distance between. Therefore an MMD statistic close to zero means that the distribution are approximately the same.  
+
+    - The author use MMD statistics to compare the degree, clustering, and spectrum distributions of the generated explanation against the observed data. The degree distribution of a graph shows the frequency of nodes with varying numbers of connections, providing insight into the network's connectivity pattern. The clustering coefficient measures the extent to which a node's neighbors are interconnected, representing the fraction of triangles involving that node and indicating local clustering. The spectrum distribution involves the eigenvalues of the graph's adjacency matrix or Laplacian matrix, offering detailed information about the graph's structural properties and dynamic behaviors. 
 
 - Loss CF
+
+    - In additional to model-level explanations, 
 
 - CF-ACC 
 
@@ -489,16 +531,6 @@ number of edges.
 - Density
 
 - Summary of Results + Figures
-
-- Forward Diffusion  
-
-    - The process of iteratively adding noise is known as forward diffusion. 
-    - Let $X_0$ be a noise free observation.  
-    - If $X_0$ is continuous, Gaussian noise is most common.
-    - Noise is added based on fixed hyperparameter known as the variance schedule and is denoted by $(\beta_1, \ \dots, \ \beta_T)$ where $T$ is the total number of noising steps (theoretical $X_T$ need to be pure noise). 
-    - Using Gaussian noise, continuous forward diffusion is defined as  
-
-- Note on counter-factual explanations. 
 
 ## ProtGNN
 [@Zhang_Liu_Wang_Lu_Lee_2021]
