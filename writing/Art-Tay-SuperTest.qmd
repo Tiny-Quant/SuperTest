@@ -87,6 +87,8 @@ number of edges.
 
 - Let $\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G$ be an $L$ layer GNN model with parameters $\Omega$ that we would like to explain. 
 
+- Let $\hat Y_G$ be the predicted class label for graph $G$ predicted from explainee(). 
+
 - For any graph Let $\nu$ denote the set of node and $\mathcal{E}$ denote the set of edges. 
 
 # Analysis of Core Papers
@@ -433,7 +435,7 @@ number of edges.
     \begin{equation}
         \mathcal{L}_{dist} (\Omega \ | \ A_0) =  \sum_{t=1}^T 
             \left(1 - 2 \bar \beta_t + \dfrac 1 T \right)
-            \mathams{E}_{A_t}
+            \mathams{E}_{\hat A_0}
             \text{CrtEnt} \left(
                 A_0, \hat A_0
             \right)
@@ -504,11 +506,14 @@ number of edges.
             \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
             ||^2_2 \\
             &= 
-            (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
-            \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
-            (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
-            \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
-            ||^2_2 \\ 
+            \left(
+                \dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+                \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
+            \right)^T
+            \left(
+                (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+                \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
+            \right)^T \\
             &= 
             \dfrac{1}{n^2} \phi(\vec{x})^T \phi(\vec{x}) + 
             \dfrac{1}{m^2} \phi(\vec{y})^T \phi(\vec{y}) - 
@@ -518,19 +523,54 @@ number of edges.
     - Intuitively $\phi(\vec{x})^T \phi(\vec{x})$ and 
     $\phi(\vec{y})^T \phi(\vec{y})$ can be thought of as the distance within the observations of $x$ and $y$ and $\phi(\vec{x})^T \phi(\vec{y})$ as the distance between. Therefore an MMD statistic close to zero means that the distribution are approximately the same.  
 
-    - The author use MMD statistics to compare the degree, clustering, and spectrum distributions of the generated explanation against the observed data. The degree distribution of a graph shows the frequency of nodes with varying numbers of connections, providing insight into the network's connectivity pattern. The clustering coefficient measures the extent to which a node's neighbors are interconnected, representing the fraction of triangles involving that node and indicating local clustering. The spectrum distribution involves the eigenvalues of the graph's adjacency matrix or Laplacian matrix, offering detailed information about the graph's structural properties and dynamic behaviors. 
+    - The author use MMD statistics to compare the degree, clustering, and spectrum distributions of the generated explanation against the observed data. The degree distribution of a graph indicates how frequently nodes have different numbers of connections, reflecting the overall connectivity pattern. The clustering coefficient of a node measures the proportion of the node's neighbors that are also connected to each other, representing local clustering. The spectrum distribution, which is the distribution of eigenvalues of the adjacency matrix or Laplacian matrix, provides insights into the graph’s structural characteristics and dynamic properties.
+
+    - Like GNNInterpreter, the author of D4Explainer also value the sparsity of their generate example. They measure the density of a graph as the number of present edges divided by the number of possible edges or 
+    \begin{equation}
+        \text{Density} = \mathcal{|E|} / |\nu|^2
+    \end{equation}
 
 - Loss CF
 
-    - In additional to model-level explanations, 
+    - In additional to model-level explanations, D4Explainer can provide *counterfactual explanation* be include an additional term in the loss function. The authors define a counterfactual explanation for a particular observed graph to be $G^c$ such that $\hat Y_{G^c} \neq \hat Y_G$, but the difference between $G^c$ and $G$ is minimal. 
 
-- CF-ACC 
+    - $\mathcal{L}_{dist}$ ensures that the $G^c$ generated won't deviate too far from the observed graph distribution.   
 
-- Fidelity
+    - Adding $\mathcal{L}_{CF}$ minimize the probability that the generated graph is classified the same as the input graph. 
+    \begin{equation}
+         \mathcal{L}_{CF}(\Omega \ | \ A_0) = 
+            \mathams{E}_{\hat A_0} - \log(1 - \rho_{G^c}[\hat Y_{G}])
+    \end{equation} 
+    where $G = (X, A, E)$ is an observed graph and $G^c = (X, \hat A_0, E)$.
 
-- Density
+    - To quantify the quality of generated counterfactual explanations, the author report *Counterfactual Accuracy*, *Fidelity*, and modification ratio. 
+
+        - CF-ACC measure the proportion of $G^c$s that have different predicted labels than there associated observed graph.  
+        \begin{equation}
+             \text{CF-ACC} = \mathams{E}_{A_t} I(\hat Y_{G^c} \neq \hat Y_{G}) 
+        \end{equation}
+
+        - Fidelity measures the difference in the predicted probability of $G$ and $G^c$ with respected to the original class label.  
+        \begin{equation}
+            \text{Fidelity} = \mathams{E}_{\hat A_0} \rho_{G}[\hat Y_G] - \rho_{G^c}[\hat Y_G]
+        \end{equation}
+
+        - Modification ratio measures difference in edges between $G^c$ and $G$ relative to the size of the original graph.  
+        \begin{equation}
+            \text{MR} = \dfrac{|\sum_{i, j} A[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A[i, j]}
+        \end{equation}
 
 - Summary of Results + Figures
+
+    - Similar to GNNInterpreter, the author report the mean predicted probability for the targeted class. Using a maximum of 6 nodes, the author were able to achieve a mean of 0.832 on the MUTAG dataset. 
+
+    - Since the counterfactual explanation are generated on a per observation basis, the author's compared their method to other popular instance-level explanation methods.     
+
+    ![](figures/D4-CF-Plot.png)
+    The above plot displays that D4Explainer can flip the prediction on ~80% of observed graphs at most modification levels. Missing from the plot is a variance measure. It is possible that the counterfactual accuracy varies more between different data splits or hyperparameter than the other methods.
+
+    ![](figures/D4-MMD-Table.png)
+    The above table indicates that the generated graph tend to have feature distribution that are close to the original dataset; however, there might be a hidden class bias. The distributions might only be close for the majority class, skewing the averages.      
 
 ## ProtGNN
 [@Zhang_Liu_Wang_Lu_Lee_2021]
@@ -545,6 +585,10 @@ number of edges.
 
 # Technical Details 
 
+## Methodology
+
+
+## Results
 ```{r}
 #| echo: false
 
@@ -578,6 +622,20 @@ table_1 |> kbl(format = "latex", booktabs = T,
 ```
 
 # Future Directions 
+
+## Graph Edit Distance
+
+- Class lean problem. 
+
+- GED as QAP. 
+
+- Simulation 
+
+## Graph Prototype Masking Network 
+
+- Theory 
+
+- Diagram 
 
 \pagebreak
 

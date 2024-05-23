@@ -195,7 +195,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[frame hidden, borderline west={3pt}{0pt}{shadecolor}, interior hidden, breakable, sharp corners, boxrule=0pt, enhanced]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, sharp corners, boxrule=0pt, breakable, frame hidden]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -347,6 +347,9 @@
   \(\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G\)
   be an \(L\) layer GNN model with parameters \(\Omega\) that we would
   like to explain.
+\item
+  Let \(\hat Y_G\) be the predicted class label for graph \(G\)
+  predicted from explainee().
 \item
   For any graph Let \(\nu\) denote the set of node and \(\mathcal{E}\)
   denote the set of edges.
@@ -899,7 +902,7 @@
     \begin{equation}
       \mathcal{L}_{dist} (\Omega \ | \ A_0) =  \sum_{t=1}^T 
           \left(1 - 2 \bar \beta_t + \dfrac 1 T \right)
-          \mathams{E}_{A_t}
+          \mathams{E}_{\hat A_0}
           \text{CrtEnt} \left(
               A_0, \hat A_0
           \right)
@@ -987,11 +990,14 @@
           \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
           ||^2_2 \\
           &= 
-          (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
-          \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
-          (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
-          \dfrac{1}{m} \phi(\vec{y}) \mathbb{1})^T
-          ||^2_2 \\ 
+          \left(
+              \dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+              \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
+          \right)^T
+          \left(
+              (\dfrac{1}{n} \phi(\vec{x}) \mathbb{1} -
+              \dfrac{1}{m} \phi(\vec{y}) \mathbb{1}
+          \right)^T \\
           &= 
           \dfrac{1}{n^2} \phi(\vec{x})^T \phi(\vec{x}) + 
           \dfrac{1}{m^2} \phi(\vec{y})^T \phi(\vec{y}) - 
@@ -1007,32 +1013,96 @@
   \item
     The author use MMD statistics to compare the degree, clustering, and
     spectrum distributions of the generated explanation against the
-    observed data. The degree distribution of a graph shows the
-    frequency of nodes with varying numbers of connections, providing
-    insight into the network's connectivity pattern. The clustering
-    coefficient measures the extent to which a node's neighbors are
-    interconnected, representing the fraction of triangles involving
-    that node and indicating local clustering. The spectrum distribution
-    involves the eigenvalues of the graph's adjacency matrix or
-    Laplacian matrix, offering detailed information about the graph's
-    structural properties and dynamic behaviors.
+    observed data. The degree distribution of a graph indicates how
+    frequently nodes have different numbers of connections, reflecting
+    the overall connectivity pattern. The clustering coefficient of a
+    node measures the proportion of the node's neighbors that are also
+    connected to each other, representing local clustering. The spectrum
+    distribution, which is the distribution of eigenvalues of the
+    adjacency matrix or Laplacian matrix, provides insights into the
+    graph's structural characteristics and dynamic properties.
+  \item
+    Like GNNInterpreter, the author of D4Explainer also value the
+    sparsity of their generate example. They measure the density of a
+    graph as the number of present edges divided by the number of
+    possible edges or \begin{equation}
+      \text{Density} = \mathcal{|E|} / |\nu|^2
+      \end{equation}
   \end{itemize}
 \item
   Loss CF
 
   \begin{itemize}
-  \tightlist
   \item
-    In additional to model-level explanations,
+    In additional to model-level explanations, D4Explainer can provide
+    \emph{counterfactual explanation} be include an additional term in
+    the loss function. The authors define a counterfactual explanation
+    for a particular observed graph to be \(G^c\) such that
+    \(\hat Y_{G^c} \neq \hat Y_G\), but the difference between \(G^c\)
+    and \(G\) is minimal.
+  \item
+    \(\mathcal{L}_{dist}\) ensures that the \(G^c\) generated won't
+    deviate too far from the observed graph distribution.
+  \item
+    Adding \(\mathcal{L}_{CF}\) minimize the probability that the
+    generated graph is classified the same as the input graph.
+    \begin{equation}
+       \mathcal{L}_{CF}(\Omega \ | \ A_0) = 
+          \mathams{E}_{\hat A_0} - \log(1 - \rho_{G^c}[\hat Y_{G}])
+      \end{equation} where \(G = (X, A, E)\) is an observed graph and
+    \(G^c = (X, \hat A_0, E)\).
+  \item
+    To quantify the quality of generated counterfactual explanations,
+    the author report \emph{Counterfactual Accuracy}, \emph{Fidelity},
+    and modification ratio.
+
+    \begin{itemize}
+    \item
+      CF-ACC measure the proportion of \(G^c\)s that have different
+      predicted labels than there associated observed graph.\\
+      \begin{equation}
+         \text{CF-ACC} = \mathams{E}_{A_t} I(\hat Y_{G^c} \neq \hat Y_{G}) 
+        \end{equation}
+    \item
+      Fidelity measures the difference in the predicted probability of
+      \(G\) and \(G^c\) with respected to the original class label.\\
+      \begin{equation}
+        \text{Fidelity} = \mathams{E}_{\hat A_0} \rho_{G}[\hat Y_G] - \rho_{G^c}[\hat Y_G]
+        \end{equation}
+    \item
+      Modification ratio measures difference in edges between \(G^c\)
+      and \(G\) relative to the size of the original graph.\\
+      \begin{equation}
+        \text{MR} = \dfrac{|\sum_{i, j} A[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A[i, j]}
+        \end{equation}
+    \end{itemize}
   \end{itemize}
 \item
-  CF-ACC
-\item
-  Fidelity
-\item
-  Density
-\item
   Summary of Results + Figures
+
+  \begin{itemize}
+  \item
+    Similar to GNNInterpreter, the author report the mean predicted
+    probability for the targeted class. Using a maximum of 6 nodes, the
+    author were able to achieve a mean of 0.832 on the MUTAG dataset.
+  \item
+    Since the counterfactual explanation are generated on a per
+    observation basis, the author's compared their method to other
+    popular instance-level explanation methods.
+  \end{itemize}
+
+  \includegraphics{figures/D4-CF-Plot.png} The above plot displays that
+  D4Explainer can flip the prediction on \textasciitilde80\% of observed
+  graphs at most modification levels. Missing from the plot is a
+  variance measure. It is possible that the counterfactual accuracy
+  varies more between different data splits or hyperparameter than the
+  other methods.
+
+  \includegraphics{figures/D4-MMD-Table.png} The above table indicates
+  that the generated graph tend to have feature distribution that are
+  close to the original dataset; however, there might be a hidden class
+  bias. The distributions might only be close for the majority class,
+  skewing the averages.
 \end{itemize}
 
 \hypertarget{protgnn}{%
@@ -1067,6 +1137,12 @@
 \hypertarget{technical-details}{%
 \section{Technical Details}\label{technical-details}}
 
+\hypertarget{methodology}{%
+\subsection{Methodology}\label{methodology}}
+
+\hypertarget{results}{%
+\subsection{Results}\label{results}}
+
 \begin{longtable}[t]{llllll}
 \caption{}\\
 \toprule
@@ -1094,6 +1170,29 @@
 
 \hypertarget{future-directions}{%
 \section{Future Directions}\label{future-directions}}
+
+\hypertarget{graph-edit-distance}{%
+\subsection{Graph Edit Distance}\label{graph-edit-distance}}
+
+\begin{itemize}
+\item
+  Class lean problem.
+\item
+  GED as QAP.
+\item
+  Simulation
+\end{itemize}
+
+\hypertarget{graph-prototype-masking-network}{%
+\subsection{Graph Prototype Masking
+Network}\label{graph-prototype-masking-network}}
+
+\begin{itemize}
+\item
+  Theory
+\item
+  Diagram
+\end{itemize}
 
 \pagebreak
 
