@@ -193,7 +193,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[frame hidden, breakable, interior hidden, sharp corners, borderline west={3pt}{0pt}{shadecolor}, enhanced, boxrule=0pt]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, sharp corners, frame hidden, breakable, borderline west={3pt}{0pt}{shadecolor}, boxrule=0pt, enhanced]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -612,7 +612,9 @@
   \end{itemize}
 
   \begin{equation}
-       \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right)
+       \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = 
+            \mathams{E}_{G_\text{gen}}
+            \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right)
     \end{equation}
 \item
   Regularization terms.
@@ -749,27 +751,166 @@
     with similar a label.
   \end{itemize}
 \item
-  Generation Scheme
+  Forward Diffusion
+
+  \begin{itemize}
+  \item
+    The authors here are focused on discrete structural diffusion.
+    D4Explainer generate example graph by noising and de-nosing the
+    adjacency matrices of observed graphs. The sampled graphs have the
+    same features, but different structures.
+  \item
+    The process of gradually adding noise to the input data is called
+    forward diffusion. During forward diffusion, random noise is added
+    iteratively until the data becomes pure noise in the final
+    iteration. This ensures that the denoising model can start with pure
+    noise. Forward diffusion is usually a Markov process.
+  \item
+    If we assume that the observed graphs are Gilbert random graphs,
+    like GNNInterpreter, pure noise would mean that
+    \(\forall \ (i, \ j) \ A[i, j] \sim \text{Bernoulli(0.5)}\).
+  \item
+    Let \(t \in [0, T]\) denote the current iteration. Let \(\beta_t\)
+    be the common probability that any edge changes state at time step
+    \(t\). \((\beta_1, \dots, \beta_T)\) is known as the variance
+    schedule and is a set hyperparameter. Let \(A_t\) be a one-hot
+    encoded version of the \(t^{th}\) noised adjacency, \([1, 0]\) is
+    the edge exists and \([0, 1]\) otherwise. Then the forward diffusion
+    process can be expressed as:\\
+    \begin{equation}
+       A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{t-1}[i, \ j]) 
+          = \text{Cat}(A_{t-1}[i, \ j] \cdot Q_t)
+      \end{equation} or \begin{equation}
+       A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{0}[i, \ j]) 
+          = \text{Cat}\left(A_0[i, \ j] \prod_{i=1}^t  Q_i \right)
+      \end{equation} where, \[
+      Q_t = 
+      \left[
+      \begin{matrix}
+      1-\beta_t & \beta_t \\ 
+      \beta_t & 1 - \beta_t
+      \end{matrix}
+      \right]
+      \] the \(t^{th}\) element-wise transition matrix.
+  \item
+    \textbf{Proof 2:}
+    \(\lim_{t \to \infty} q(A_t[i, \ j] \ | \ A_{t-1}[i, \ j])  \overset{D}{\to}\)
+    Bernoulli(0.5) (converges in distribution). \begin{align*}
+       \lim_{t \to \infty} q(A_t[i, \ j] \ | \ A_{t-1}[i, \ j]) 
+          &= \lim_{t \to \infty} \text{Cat}\left(A_0[i, \ j] \prod_{i=1}^t Q_i \right) \\
+          &= \lim_{t \to \infty} \text{Cat}
+          \left(A_0[i, \ j] 
+              \prod_{i=1}^t  
+              \left[
+              \begin{matrix}
+                  1  & -1 \\
+                  1 & 1
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  1  &  0 \\
+                  0 & 1-2\beta_i
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  0.5  &  0.5 \\
+                  -0.5 & 0.5
+              \end{matrix}
+              \right]
+          \right) \\ 
+          &\text{Eigen decomposition.} \\ 
+          &= \lim_{t \to \infty} \text{Cat}
+          \left(A_0[i, \ j] 
+              \left[
+              \begin{matrix}
+                  1  & -1 \\
+                  1 & 1
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  1  &  0 \\
+                  0 & \prod_{i=1}^t 1-2\beta_i
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  0.5  &  0.5 \\
+                  -0.5 & 0.5
+              \end{matrix}
+              \right]
+          \right) \\ 
+          &= \text{Cat}
+          \left(A_0[i, \ j] 
+              \left[
+              \begin{matrix}
+                  1  & -1 \\
+                  1 & 1
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  1  &  0 \\
+                  0 & 0
+              \end{matrix}
+              \right]
+              \left[
+              \begin{matrix}
+                  0.5  &  0.5 \\
+                  -0.5 & 0.5
+              \end{matrix}
+              \right]
+          \right) \\ 
+          &\text{Set }\beta < 0.5. \\
+          &= \text{Cat}([0.5, 0.5]) = \text{Bernoulli}(0.5)
+      \end{align*}
+  \end{itemize}
+\item
+  Backward Diffusion (Denoising Model)
+
+  \begin{itemize}
+  \item
+    A denoising model either predicts the error that was added or the
+    value of the original observation. Even though only the adjacency
+    matrix is being noised, we still want to include all available data.
+    Thus the denoising model is parameterized as: \begin{equation}
+       p(A_0 \ | \ A_t, t, X_0, E_0; \ \Omega)  
+      \end{equation} where \(\Omega\) is the set of trainable
+    parameters.
+  \item
+    The author employed a Provably Power Graph Network (PPGN) {[}cite{]}
+    as their denoising model; however, they have added an additional
+    neural network to learn the time or noise level effect.
+  \end{itemize}
+\item
+  Loss Dist
 
   \begin{itemize}
   \tightlist
   \item
-    The authors of D4Explainer generate example graph by noising and
-    de-nosing the adjacency matrices of observed graphs.
-  \item
-    The process of iteratively adding noise is known as forward
-    diffusion.
-  \item
-    Let \(t \in [0, T]\) denote the iterative steps.
-  \item
-    \(A_t\) denote
+    Like most diffusion models, the primary objective is to minimize the
+    distance between the predicted de-noised observation and the
+    original. The author have added an additional weight term to focus
+    the model on noisier or more difficult training examples.
+    \begin{equation}
+      \mathcal{L}_{dist} (\Omega \ | \ A_0) =  \sum_{t=1}^T 
+          \left(1 - 2 \bar \beta_t + \dfrac 1 T \right)
+          \mathams{E}_{A_t}
+          \text{CrtEnt} \left(
+              A_0, \hat A_0
+          \right)
+      \end{equation} where
+    \(\hat A_0 = p(A_0 \ | \ A_t, t, X_0, E_0; \ \hat \Omega)\),
+    \(A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{0}[i, \ j])\), and \[
+      \bar \beta_t = \frac 1 2 - \frac 1 2 \prod^t_{i=1}(1-2\beta_i)
+      \] the cumulative transition probability.
   \end{itemize}
 \item
-  Loss Dist
+  Model-level sampling algorithm
 \item
   Loss CF
-\item
-  Model-level sampling algorithm
 \item
   CF-ACC
 \item
