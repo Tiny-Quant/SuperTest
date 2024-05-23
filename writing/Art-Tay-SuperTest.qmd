@@ -447,6 +447,39 @@ number of edges.
 
 - Model-level sampling algorithm 
 
+    - Use a set of observed graph features, D4Explainer generates model level explanations by sequentially denoising pure noise to generate an adjacency structure that has a high probability of being a member of the targeted class. At each step $A_t$ is denoised to $k$ candidates $A_0, k$. The candidate with the best predicted probability is then noised to a level of $t-1$ and the process is repeated. The pseudocode is reproduced below.  
+
+    \begin{algorithm}
+    \caption{D4Explainer Model-level Explanation Reverse Sampling Algorithm}\label{alg:cap}
+    \begin{algorithmic}
+        \Require $\hat \Omega$: trained denoising parameters; 
+                $q(A_t \ | \ A_0)$: forward diffusion process.
+        \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+        \renewcommand{\algorithmicensure}{\textbf{Output:}}
+        \Require N: maximum number of nodes; T: maximum noise level; 
+                K: number of candidates per iteration; 
+                $\tilde{\rho}$ targeted prediction vector; 
+                $(X, E)$: node and edge features.  
+        \Ensure $\hat A$: adjacency matrix for model-level explanation.
+        \State Sample $A_T[1:n, 1:n]$ \sim Bernoulli(0.5)
+        \For{t in T to 1}
+            \State Sample candidates 
+                $\{\hat A_{0, k} \sim p(A_t,t, X, E; \ \hat \Omega) : k \in 1, \dots, K\}$
+            \State Select the best candidate 
+            $\underset{j \ \in \ i, \dots K}{\text{argmin}}$ 
+            CrtEnt(explainee($G = (X, A_{0, j}, E)), \ \tilde{\rho}$)
+            \State Sample $A_{t-1}[1:n, 1:n] \sim q(A_{t-1}, A_{0, j})$
+        \EndFor
+        \State \Return $A_0$
+    \end{algorithmic}
+    \end{algorithm}
+
+- In-Distribution metrics. 
+
+    - To access how well a sampled explanation matches the observed graph distribution, the author compute various maximum mean discrepancy (mmd) statistics. 
+
+    -  
+
 - Loss CF
 
 - CF-ACC 
@@ -454,8 +487,6 @@ number of edges.
 - Fidelity
 
 - Density
-
-- MMD  
 
 - Summary of Results + Figures
 
