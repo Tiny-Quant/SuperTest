@@ -629,6 +629,8 @@ table_1 |> kbl(format = "latex", booktabs = T,
              symbol = c("Empty"))
 ```
 
+![(a) Observed graph from class 0, Pr = 0.92; (b) Generated counterfactual explanation of (a) from D4Explainer reimplemented, Pr = 0.67; (c) Observed graph from class 1, Pr = 0.96; (d) Generated counterfactual explanation of (b) from D4Explainer reimplemented, Pr = 0.96; (e) Generated explanation for class 0 from GNNInterpreter reimplemented, Pr = 0.94; (f) Generated explanation for class 1 from GNNInterpreter reimplemented, Pr = 1.0; (g) Generated explanation for class 0 from GNNInterpreter (Wang and Shen 2024, fig. 1, pg.7), Pr = 1.0; (h) Generated explanation for class 1 from GNNInterpreter (Wang and Shen 2024, fig. 1, pg.7), Pr = 1.0.](figures/mutag_plot_together.png){fig-align="center" height="80%" width="80%"}
+
 - We were unable to achieve 0 variance predictive accuracy, but again the values are comparable (see table ?) given the lack of extensive hyperparameter tuning. The prediction are similarity superior to that of D4Explainer (see table ?). 
 
 - As noted by the authors, the explainee model has a bias towards the mutagenic class (class 0), which can explain the greater deviation between the class 0 models. 
