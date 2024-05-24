@@ -195,7 +195,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, sharp corners, boxrule=0pt, breakable, frame hidden]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[sharp corners, borderline west={3pt}{0pt}{shadecolor}, interior hidden, enhanced, boxrule=0pt, breakable, frame hidden]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -1140,13 +1140,41 @@
 \hypertarget{methodology}{%
 \subsection{Methodology}\label{methodology}}
 
+\begin{itemize}
+\item
+  Since GNNInterpreter only makes qualitative assessments of generated
+  structures, we applied the metrics describe in D4Explainer to quantify
+  the properties of the generating distribution.
+\item
+  We reimplemented GNNInterpreter using an identical generation scheme
+  and loss function.
+\item
+  We trained the reimplemented model on the MUTAG dataset which consists
+  of nitroaromatic compounds, with the goal being to predict their
+  mutagenicity on Salmonella typhimurium {[}cite{]}. Each observation is
+  a graphs representing a chemical structure, where vertices denote
+  atoms and edges represent bonds {[}cite{]}. MUTAG is a standard
+  benchmark graph classification dataset.
+\item
+  For our explainee model, we also implemented a 3-layer GCN model.
+  There are slight variations between the architectures and training
+  hyperparameter, but the accuracies are comparable, 86\% (ours) and
+  92\% (theirs).
+\item
+  We additionally reimplement D4Explainer's counterfactual generator.
+  Although not discussed in the original paper, this model can also be
+  used to produce model level explanations. We simply randomly sample a
+  graph from the opposite class and take the generated counter factual
+  graph as our explanation.
+\end{itemize}
+
 \hypertarget{results}{%
 \subsection{Results}\label{results}}
 
 \begin{longtable}[t]{llllll}
 \caption{}\\
 \toprule
-  & Predictions & Density & Deg. & CLus. & Spec.\\
+  & Predictions & Density & Deg. & Clus. & Spec.\\
 \midrule
 \addlinespace[0.3em]
 \multicolumn{6}{l}{\textbf{GNNInterpreter Original}}\\
@@ -1167,6 +1195,94 @@
 \multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{1} +/- 1 standard deviation; 1000 graphs.}\\
 \multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{*} Empty}\\
 \end{longtable}
+
+\begin{itemize}
+\item
+  We were unable to achieve 0 variance predictive accuracy, but again
+  the values are comparable (see table ?) given the lack of extensive
+  hyperparameter tuning. The prediction are similarity superior to that
+  of D4Explainer (see table ?).
+\item
+  As noted by the authors, the explainee model has a bias towards the
+  mutagenic class (class 0), which can explain the greater deviation
+  between the class 0 models.
+\item
+  Another limiting factor is a lower set maximum number of nodes. We set
+  it to 8 to make the results more comparable to the model-level
+  explanation reported by D4Explainer.
+\item
+  Surprisingly D4Explainer produces sparser graphs, in terms of density,
+  than GNNInterpreter, despite no explicit penalty in the loss function.
+\item
+  Based on the MMD statistics, the D4Explainer produces graph with
+  better in-distribution properties. This might be the result of the
+  explicit regularization in GNNInterpreter. Penalize the edge
+  probabilities should result in a different degree distribution. The
+  clustering coefficient might also be effect since fewer edges result
+  in fewer triangle clusters.
+\item
+  The spectrum distributions are close for both model, since both model
+  enforce similarity in the explainee embedding space which is similar
+  to the nature of the spectrum distribution.
+\item
+  On the other hand, an argument could be made that a similar degree
+  distribution and clustering coefficient isn't actually desirable. For
+  larger or more densely connected graphs, lower MMD statistics might
+  results in explanations that are too complex to be useful.
+\item
+  The reimplement D4Explainer produces the least dense graphs, but has
+  the least discriminative predictions. The latter makes sense, since
+  the goal of the counterfactual loss is to flip the prediction, not
+  necessarily maximize it. One the other hand, this model demonstrates
+  that it is possible to generate sparse predictions and maintain a
+  similar degree distribution and clustering.
+\item
+  This results lead to two main conclusions.
+
+  \begin{itemize}
+  \item
+    First, the generator model should make use of the graph level
+    observations. GNNInterpreter only use information about the graph
+    structure through the explainee, never on the raw scale.
+
+    \begin{itemize}
+    \item
+      This lack of graph level information result can result in
+      unrealistic distributional properties.
+    \item
+      This could be done by using the observed graphs to predict the
+      distributional parameters.
+    \item
+      Alternatively, the generator could be replaced with a diffusion
+      model without any need to modify the loss.
+    \end{itemize}
+  \item
+    Second, the generator model should use class or prediction
+    information.
+
+    \begin{itemize}
+    \item
+      D4Explainer's model-level sampling algorithm is less efficient and
+      less accuracy than GNNInterpreter's direct optimization during
+      training.
+    \item
+      The reimplemented sampling algorithm demonstrates that direct
+      denoising can still maintain low MMD statistics.
+    \item
+      A possible modification would be to add the
+      \(\mathcal{L}_\text{pred}\) and \(\mathcal{L}_\text{embed}\) from
+      GNNInterpreter to the loss.
+    \item
+      Alternatively, one could embedding the class label, similar to the
+      way time is embedded, in order to establish a conditional
+      diffusion model, which has worked extremely well in other
+      applications.
+    \item
+      Additionally, it would be easy to explore diffusing the node and
+      edge features as well as like \emph{DiGress} {[}cite{]}.
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
 
 \hypertarget{future-directions}{%
 \section{Future Directions}\label{future-directions}}

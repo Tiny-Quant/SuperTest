@@ -586,7 +586,15 @@ number of edges.
 # Technical Details 
 
 ## Methodology
+- Since GNNInterpreter only makes qualitative assessments of generated structures, we applied the metrics describe in D4Explainer to quantify the properties of the generating distribution. 
 
+- We reimplemented GNNInterpreter using an identical generation scheme and loss function. 
+
+- We trained the reimplemented model on the MUTAG dataset which consists of nitroaromatic compounds, with the goal being to predict their mutagenicity on Salmonella typhimurium [cite]. Each observation is a graphs representing a chemical structure, where vertices denote atoms and edges represent bonds [cite]. MUTAG is a standard benchmark graph classification dataset. 
+
+- For our explainee model, we also implemented a 3-layer GCN model. There are slight variations between the architectures and training hyperparameter, but the accuracies are comparable, 86% (ours) and 92% (theirs). 
+
+- We additionally reimplement D4Explainer's counterfactual generator. Although not discussed in the original paper, this model can also be used to produce model level explanations. We simply randomly sample a graph from the opposite class and take the generated counter factual graph as our explanation.   
 
 ## Results
 ```{r}
@@ -606,7 +614,7 @@ table_1 <- data.frame(
     check.names = F
 ) |> t()
 
-colnames(table_1) <- c("Predictions", "Density", "Deg.", "CLus.", "Spec.")
+colnames(table_1) <- c("Predictions", "Density", "Deg.", "Clus.", "Spec.")
 rownames(table_1) <- c("Class 0", "Class 1", "Class 0", "Class 1", 
                        "Aggregated", "Class 0", "Class 1")
 
@@ -620,6 +628,43 @@ table_1 |> kbl(format = "latex", booktabs = T,
     footnote(number = c("+/- 1 standard deviation; 1000 graphs."), 
              symbol = c("Empty"))
 ```
+
+- We were unable to achieve 0 variance predictive accuracy, but again the values are comparable (see table ?) given the lack of extensive hyperparameter tuning. The prediction are similarity superior to that of D4Explainer (see table ?). 
+
+- As noted by the authors, the explainee model has a bias towards the mutagenic class (class 0), which can explain the greater deviation between the class 0 models. 
+
+- Another limiting factor is a lower set maximum number of nodes. We set it to 8 to make the results more comparable to the model-level explanation reported by D4Explainer.      
+
+- Surprisingly D4Explainer produces sparser graphs, in terms of density, than GNNInterpreter, despite no explicit penalty in the loss function.   
+
+- Based on the MMD statistics, the D4Explainer produces graph with better in-distribution properties. This might be the result of the explicit regularization in GNNInterpreter. Penalize the edge probabilities should result in a different degree distribution. The clustering coefficient might also be effect since fewer edges result in fewer triangle clusters.  
+
+- The spectrum distributions are close for both model, since both model enforce similarity in the explainee embedding space which is similar to the nature of the spectrum distribution. 
+
+- On the other hand, an argument could be made that a similar degree distribution and clustering coefficient isn't actually desirable. For larger or more densely connected graphs, lower MMD statistics might results in explanations that are too complex to be useful. 
+
+- The reimplement D4Explainer produces the least dense graphs, but has the least discriminative predictions. The latter makes sense, since the goal of the counterfactual loss is to flip the prediction, not necessarily maximize it. One the other hand, this model demonstrates that it is possible to generate sparse predictions and maintain a similar degree distribution and clustering.   
+
+- This results lead to two main conclusions. 
+    - First, the generator model should make use of the graph level observations. GNNInterpreter only use information about the graph structure through the explainee, never on the raw scale. 
+
+        - This lack of graph level information result can result in unrealistic distributional properties. 
+
+        - This could be done by using the observed graphs to predict the distributional parameters. 
+
+        - Alternatively, the generator could be replaced with a diffusion model without any need to modify the loss.    
+
+    - Second, the generator model should use class or prediction information. 
+
+        - D4Explainer's model-level sampling algorithm is less efficient and less accuracy than GNNInterpreter's direct optimization during training. 
+
+        - The reimplemented sampling algorithm demonstrates that direct denoising can still maintain low MMD statistics. 
+
+        - A possible modification would be to add the $\mathcal{L}_\text{pred}$ and $\mathcal{L}_\text{embed}$ from GNNInterpreter to the loss. 
+
+        - Alternatively, one could embedding the class label, similar to the way time is embedded, in order to establish a conditional diffusion model, which has worked extremely well in other applications. 
+
+        - Additionally, it would be easy to explore diffusing the node and edge features as well as like *DiGress* [cite]. 
 
 # Future Directions 
 
