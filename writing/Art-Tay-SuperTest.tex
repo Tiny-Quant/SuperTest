@@ -195,7 +195,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[sharp corners, breakable, boxrule=0pt, interior hidden, borderline west={3pt}{0pt}{shadecolor}, frame hidden, enhanced]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, borderline west={3pt}{0pt}{shadecolor}, boxrule=0pt, breakable, enhanced, frame hidden, sharp corners]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -361,7 +361,7 @@
 \hypertarget{gnninterpreter}{%
 \subsection{GNNInterpreter}\label{gnninterpreter}}
 
-(Wang and Shen 2024)
+(X. Wang and Shen 2024)
 
 \begin{itemize}
 \item
@@ -599,7 +599,8 @@
   \item
     The author find that empirically GNN model exhibit a class
     preference.\\
-    \includegraphics{figures/random_baseline.png} (Wang and Shen 2024)
+    \includegraphics{figures/random_baseline.png} (X. Wang and Shen
+    2024)
   \end{itemize}
 
   For example, random graphs have an average predicted probability of
@@ -1249,12 +1250,31 @@ Shen 2024, fig.~1, pg.7), Pr = 1.0.}
   larger or more densely connected graphs, lower MMD statistics might
   results in explanations that are too complex to be useful.
 \item
+  Similar to the original examples display in GNNInterpreter, the
+  generated non-mutagenic graphs do not have clear or realistic
+  structures. Graph (f) highlights that nitrogen in key. We believe that
+  this result is consistent with the original findings about the N02
+  groups, but because of the more restrictive node limit, our
+  reproduction focuses on nitrogen since multiple oxygens can be found
+  in non-mutagenic chemicals.
+\item
+  The reimplement D4Explainer has a CF-ACC in line with the original
+  paper, 76.32\% at 0.41 log MR.
+\item
   The reimplement D4Explainer produces the least dense graphs, but has
   the least discriminative predictions. The latter makes sense, since
   the goal of the counterfactual loss is to flip the prediction, not
-  necessarily maximize it. One the other hand, this model demonstrates
-  that it is possible to generate sparse predictions and maintain a
-  similar degree distribution and clustering.
+  necessarily maximize it.
+\item
+  One the other hand, this model demonstrates that it is possible to
+  generate sparse predictions and maintain a similar degree distribution
+  and clustering.
+\item
+  Visually the counterfactual explanation make sense. Graph (b)
+  eliminated the red or chlorine atom which is typically associated with
+  non-mutagenic compounds {[}XGNN{]}. Graph (d) corrupted 3 of the 4 N02
+  groups, which is in line with GNNInterpreter's findings that multiple
+  N02 groups is a strong indicator of mutagenicity.
 \item
   This results lead to two main conclusions.
 
@@ -1311,11 +1331,160 @@ Shen 2024, fig.~1, pg.7), Pr = 1.0.}
 
 \begin{itemize}
 \item
-  Class lean problem.
+  GNNInterpreter generates graphs with predictions very close to the
+  target class, but lack good in-distributions properties.
 \item
-  GED as QAP.
+  D4Explainer generates explanations with more similar features
+  distributions to the observed data; however, the predicted
+  probabilities show more variance. Furthermore, while the model
+  parameters of GNNInterpreter's generator can be interpreted,
+  D4Explainer introduces another black-box model.
 \item
-  Simulation
+  We propose using a differentiable approximation to the graph edit
+  distance as a way of generically enforcing structural consistency.
+\item
+  GED measures the similarity between two graphs by counting the minimum
+  number of edits required to make the graphs isomorphic (or subgraph
+  isomorphic). Similar to the modification ratio for counterfactual
+  explanations.
+\item
+  This has the key advantage of being human interpretable. For example,
+  the percentage of atoms and bonds that need to be changed for two
+  molecules to match is more relatable than the cosine distance between
+  their embeddings.
+\item
+  Finding the exact optimal GED is a known NP-complete problem, and most
+  solutions are not differentiable (Bougleux et al. 2015).
+\item
+  Fortunately, approximating GED as a quadratic assignment problem (QAP)
+  solves both the time complexity and derivative issue (R. Wang et al.
+  2024).
+\end{itemize}
+
+Let \(G_1\) and \(G_2\) be graphs we wish to compute the GED between.
+QAP approximates this be solving the following optimization problem:
+\begin{equation}
+    \mathcal{L}_{\text{GED}} = \underset{M}{\max} \ \text{vec}(M) \ K(G_1, G_2) \ \text{vec}(M)^T
+\end{equation} here \(M\) is a \((n_1 \times n_2)\) binary node matching
+matrix and \(K\) is a \((n_1 n_2 \times n_1 n_2)\) quadratic affinity
+matrix that encode both node and edge similarity information. The
+efficiency of QAP comes from the fact that when any two nodes are
+matched together, the above objective will account for the possible
+edges that could connect the nodes. In order to compute GED, each entry
+of \(K\) should range from {[}-1, 0{]}, where -1 signals the need for a
+complete edit and 0 means no edits are required (R. Wang et al. 2024).
+We use the following similarity metric for every pair of nodes and
+edges: \begin{equation}
+    \begin{split}
+         &-0.25 \left[ 1 - \phi(\text{Continuous Features}) \right] \ + \\
+         &-0.5 \left[1 - \phi(\text{Discrete Features}) \right]
+    \end{split}
+\end{equation} where \(\phi(.)\) is the normalized cosine distance.
+\(1 - \phi(.)\) will return 2 is the vectors are in opposite directions,
+1 if the vectors are orthogonal, and 0 if they are pointing in the same
+direction; however, one-hot encoded vectors will never be in opposite
+directions, so the different types of feature must be weighted
+correctly. Computing affinity this way allows for \(K\) to be
+differentiable w.r.t. generated graph features. Furthermore we use the
+reweighted random walks algorithm (Cho, Lee, and Lee 2010) to solve the
+above objective, which generates an M that is differentiable w.r.t. to
+K.
+
+\begin{itemize}
+\item
+  We conducted a simulation study to compare graph level and latent
+  similarity, or \(\mathcal{L}_{\text{GED}}\) and
+  \(\mathcal{L}_{\text{embed}}\).
+\item
+  We generated 4 clusters of graph data. Every graph had one continuous
+  edge feature sampled from a standard normal, one discrete node and
+  edge feature sampled from a Bernoulli, and an adjacency matrix also
+  Bernoulli. The only variation between the clusters was the maximum
+  number of nodes as well as the mean of the continuous node feature
+  distribution. Cluster 0 had 75-100 nodes, cluster 1 had 50-75 nodes,
+  and cluster 2 as well as 3 had 10-35 nodes. This was designed to mimic
+  a classic binary graph classification dataset where cluster 0 and 1
+  are the observed classes and clusters 2 and 3 are generated subgraph
+  explanations. The embedding model was a 3 layer graph convolution
+  network with a neural network type convolution that utilized every
+  feature.
+\item
+  During each of the 50 trials, the GCN was trained using 50 samples
+  (each) from only clusters 0 and 1. We then sampled 50 test graphs from
+  each of the 4 cluster and computed 95\% t intervals for GED and
+  embedding cosine distance as percentages of their respective upper
+  bounds. Since \((\mu_0 = -1, \mu_1 = 1, \mu_2 = 0, \mu_3 = -5)\) we
+  would expect an unbiased distance metric to maintain the following
+  relationship, \begin{equation}
+    \text{dist}(1,\ 2) \approx \text{dist}(0, 2) < \text{dist}(0, 1) < \text{dist}(0, 3) < \text{dist}(1, 3)
+  \end{equation} based on the distance between cluster means.
+\end{itemize}
+
+\begin{longtable}[t]{lcc}
+\caption{Simulation Results}\\
+\toprule
+  & Cluster 0 & Cluster 1\\
+\midrule
+\addlinespace[0.3em]
+\multicolumn{3}{l}{\textbf{Embeddings}}\\
+\hspace{1em}Within & (0.0008, 0.0015) & (0.0005, 0.0009)\\
+\hspace{1em}Between & (0.5662, 0.6264) & (0.5689, 0.6289)\\
+\hspace{1em}Cluster 2 & (0.2894, 0.3589) & (0.1282, 0.209)\\
+\hspace{1em}Cluster 3 & (0.018, 0.0253) & (0.6521, 0.7097)\\
+\addlinespace[0.3em]
+\multicolumn{3}{l}{\textbf{GED}}\\
+\hspace{1em}Within & (0.4147, 0.419) & (0.462, 0.4674)\\
+\hspace{1em}Between & (0.6589, 0.6639) & (0.6586, 0.6646)\\
+\hspace{1em}Cluster 2 & (0.7843, 0.7947) & (0.7571, 0.7715)\\
+\hspace{1em}Cluster 3 & (0.6164, 0.6286) & (0.8256, 0.8352)\\
+\bottomrule
+\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{1} Node Means: $\mu_0 = -1$, $\mu_1 = 1$, $\mu_{out1} = 0$, 
+                    $\mu_{out2}$ = -5.}\\
+\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{2} 95\% t intervals on \% difference.}\\
+\end{longtable}
+
+\begin{align*}
+    \text{Expected: } &\text{dist}(1,\ 2) \approx \text{dist}(0, 2) < \text{dist}(0, 1) < \\ 
+    &\text{dist}(0, 3) < \text{dist}(1, 3) \\ 
+    \text{GED: }&(0.75, 0.77) \textcolor{green}{\approx} (0.78, 0.79) 
+                \textcolor{red}{>} (0.65, 0.66) \textcolor{red}{>} \\
+                &(0.61, 0.62) \textcolor{green}{<} (0.82, 0.83) \\
+    \text{Embedding: }&(0.12, 0.20) \textcolor{red}{<} (0.28, 0.35) 
+                \textcolor{green}{<} (0.56, 0.62) \textcolor{red}{>>} \\
+                &(0.018, 0.0253) \textcolor{green}{<} (0.65, 0.7)
+\end{align*} The most worrisome bias arises between the distances from
+cluster 0 to 1 and from cluster 0 to 3. Despite cluster 0's mean being
+twice as close to cluster 1, the embedding distance indicates that
+cluster 0 is (53, 60) percentage points farther away from cluster 1.
+Although GED also displayed this bias, it was considerably less
+pronounced, registering at (1, 5) percentage points. This implies that a
+generator initialized with a mean of -5 would produce samples with
+embeddings confidently assigning them to cluster 0, despite having a
+feature distribution far from the truth. Relying solely on embedding
+distance for training also increases the likelihood of the generator
+becoming trapped in a misleading local optimum due to the substantial
+bias. Although GED exhibits a statistically significant bias, its
+magnitude is considerably smaller, making it less likely to disrupt
+training. Another troubling bias observed is that the embedding distance
+between clusters 1 and 2 is approximately 10 percentage points less than
+the embedding distance between clusters 0 and 2, even though the mean of
+cluster 2 is equidistant from the means of clusters 1 and 0. This could
+stem from cluster 1 having fewer nodes making samples more similar in
+terms of size to cluster 2. However, since researcher typically cap the
+size of examples for interpretability, an objective with a degree bias
+could be problematic. On the contrary, GED introduces a bias absent in
+the embedding space. The edit distance between clusters 0 and 2 is
+actually greater than the distance between clusters 0 and 1. While
+biased concerning mean locations, this direction is aligned with the
+maximum node size. Despite this, the differing directions of the biases
+of GED and embedding distance imply that they capture unique structural
+nuances, potentially complementing each other.
+
+\begin{itemize}
+\tightlist
+\item
+  \(\mathcal{L}_{\text{GED}}\) could also be added to the loss function
+  for D4Explainer as well.
 \end{itemize}
 
 \hypertarget{graph-prototype-masking-network}{%
@@ -1343,11 +1512,24 @@ Chen, Yizhou Sun, and Wei Wang. 2019. {``Unsupervised Inductive
 Graph-Level Representation Learning via Graph-Graph Proximity.''}
 \url{https://arxiv.org/abs/1904.01098}.
 
+\leavevmode\vadjust pre{\hypertarget{ref-Bougleux_Brun_Carletti_Foggia_Gauxfczuxe8re_Vento_2015}{}}%
+Bougleux, Sébastien, Luc Brun, Vincenzo Carletti, Pasquale Foggia,
+Benoit Gaüzère, and Mario Vento. 2015. {``A Quadratic Assignment
+Formulation of the Graph Edit Distance,''} no. arXiv:1512.07494
+(December). \url{http://arxiv.org/abs/1512.07494}.
+
 \leavevmode\vadjust pre{\hypertarget{ref-Chen_Wu_Gupta_Ying_2023}{}}%
 Chen, Jialin, Shirley Wu, Abhijit Gupta, and Rex Ying. 2023.
 {``D4Explainer: In-Distribution GNN Explanations via Discrete Denoising
 Diffusion,''} no. arXiv:2310.19321 (October).
 \url{https://doi.org/10.48550/arXiv.2310.19321}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Cho_Lee_Lee_2010}{}}%
+Cho, Minsu, Jungmin Lee, and Kyoung Mu Lee. 2010. {``Reweighted Random
+Walks for Graph Matching.''} In \emph{Computer Vision -- ECCV 2010},
+edited by Kostas Daniilidis, Petros Maragos, and Nikos Paragios,
+492--505. Lecture Notes in Computer Science. Berlin, Heidelberg:
+Springer. \url{https://doi.org/10.1007/978-3-642-15555-0_36}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-gallicchio2019fast}{}}%
 Gallicchio, Claudio, and Alessio Micheli. 2019. {``Fast and Deep Graph
@@ -1364,6 +1546,12 @@ Maddison, Chris J., Andriy Mnih, and Yee Whye Teh. 2017. {``The Concrete
 Distribution: A Continuous Relaxation of Discrete Random Variables,''}
 no. arXiv:1611.00712 (March).
 \url{https://doi.org/10.48550/arXiv.1611.00712}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-wang2024pygm}{}}%
+Wang, Runzhong, Ziao Guo, Wenzheng Pan, Jiale Ma, Yikai Zhang, Nan Yang,
+Qi Liu, et al. 2024. {``Pygmtools: A Python Graph Matching Toolkit.''}
+\emph{Journal of Machine Learning Research} 25 (33): 1--7.
+\url{https://jmlr.org/papers/v25/23-0572.html}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-Wang_Shen_2024}{}}%
 Wang, Xiaoqi, and Han-Wei Shen. 2024. {``GNNInterpreter: A Probabilistic
