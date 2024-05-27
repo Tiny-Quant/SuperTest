@@ -195,7 +195,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, borderline west={3pt}{0pt}{shadecolor}, boxrule=0pt, breakable, enhanced, frame hidden, sharp corners]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[frame hidden, borderline west={3pt}{0pt}{shadecolor}, interior hidden, enhanced, boxrule=0pt, breakable, sharp corners]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -1111,6 +1111,95 @@
 
 (Zhang et al. 2021)
 
+\begin{itemize}
+\item
+  Overview:
+
+  \begin{itemize}
+  \item
+    Up until this point we have been describing post-hoc explanation
+    methods.
+  \item
+    Rudin (2019) raises several important concerns with this paradigm.
+
+    \begin{enumerate}
+    \def\labelenumi{\arabic{enumi}.}
+    \item
+      Parity in the outcomes does not imply parity in the reasoning.
+      Explanation may bear strong prediction, but for distinct and
+      sometimes nonsensical reasons. Recall that that completely random
+      graphs can illicit confident predictions.
+    \item
+      Feature importance does not indicate how the model is using the
+      feature, just that it is important. For example, a substructure
+      might lead to a prediction because of a strong correlation with
+      the class, but the substructure could also be important because of
+      a strong negative correlation with the other classes.
+    \end{enumerate}
+  \item
+    ProtGNN use the prototype learning paradigm to create a GNN model
+    that is \emph{interpretable}.
+  \end{itemize}
+\item
+  Prototype Learning:
+
+  \begin{itemize}
+  \item
+    Prototype learning models make predictions by comparing new inputs
+    to exemplar cases learned during training.
+  \item
+    This results in an interpretable model because as long as the
+    prediction function applied to the prototype scores in simple, the
+    reasoning for any given prediction will be clear.
+  \item
+    Intuitively, this can be thought of as using a black-box model to
+    engineer features, which are then passed to a simple white-box
+    model.
+  \end{itemize}
+\item
+  ProtGNN Architecture:
+
+  \begin{itemize}
+  \item
+    ProtGNN initialize \(m\) prototype vectors for each of the \(c\)
+    classes. Let \(p_k\) denote a prototype vector and \(P_{Y_G}\)
+    denote the set of prototype vectors assigned to prediction class
+    \(Y_G\).
+  \item
+    Let \(f(G; \ \Omega_f) = \hat p_G \in \mathbb{R}^p\) be a graph
+    encoder function that maps any graph into the prototype vector
+    space, where \(\Omega_f\) is the set of trainable parameters.
+  \item
+    Prediction Loss: \begin{equation}
+          \mathcal{L}_{\text{prot}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mc} \ | \ G)= \mathams{E}_G \ \text{CrsEnt} \left[\psi \left(sim\left(\hat p_G, p_1\right), \dots, sim\left(\hat p_G, p_{mc}\right); \ \Omega_\psi\right), \ Y_G \right]
+      \end{equation} where \(\psi\) is any simple prediction model with
+    trainable parameters \(\Omega_\psi\) and \(sim\) is any vector
+    similarity function. ProtGNN uses a full connected layer with a
+    softmax output activation for \(\psi\), which is similar to a
+    multinomial regression model.
+  \item
+    To address similar out-of-distribution concerns discussed above, the
+    author include 3 additional loss terms to constraints.
+  \item
+    Cluster Loss: Each embedding should be close to at least one
+    prototype assigned to its ground truth class.\\
+    \begin{equation}
+          \mathcal{L}_{\text{clst}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mc} \ | \ G) = \mathams{E}_G \ \underset{p_k \in P_{Y_G}}{\text{min}} || \hat p_G - p_k ||^2_2
+      \end{equation}
+  \item
+    Separation Loss: Embeddings should be far away from the prototypes
+    of other classes. \begin{equation}
+          \mathcal{L}_{\text{sep}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mc} \ | \ G) = - \mathams{E}_G \ \underset{p_k \notin P_{Y_G}}{\text{min}} || \hat p_G - p_k ||^2_2
+      \end{equation}
+  \item
+    Diversity Loss: The prototypes within a class should learn different
+    information.\\
+    \begin{equation}
+           \mathcal{L}_{\text{div}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mc} \ | \ G) = \sum_{k=1}^C \sum_{p_i \neq p_j \in P_k} \ \max(0, cos(p_i, p_j) - s_\text{max})
+      \end{equation} where \(s_\text{max}\) is a similarity threshold.
+  \end{itemize}
+\end{itemize}
+
 \hypertarget{synthesis-of-core-papers}{%
 \section{Synthesis of Core Papers}\label{synthesis-of-core-papers}}
 
@@ -1546,6 +1635,12 @@ Maddison, Chris J., Andriy Mnih, and Yee Whye Teh. 2017. {``The Concrete
 Distribution: A Continuous Relaxation of Discrete Random Variables,''}
 no. arXiv:1611.00712 (March).
 \url{https://doi.org/10.48550/arXiv.1611.00712}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Rudin_2019}{}}%
+Rudin, Cynthia. 2019. {``Stop Explaining Black Box Machine Learning
+Models for High Stakes Decisions and Use Interpretable Models
+Instead,''} no. arXiv:1811.10154 (September).
+\url{https://doi.org/10.48550/arXiv.1811.10154}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-wang2024pygm}{}}%
 Wang, Runzhong, Ziao Guo, Wenzheng Pan, Jiale Ma, Yikai Zhang, Nan Yang,
