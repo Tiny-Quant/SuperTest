@@ -195,7 +195,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[frame hidden, borderline west={3pt}{0pt}{shadecolor}, interior hidden, enhanced, boxrule=0pt, breakable, sharp corners]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[enhanced, breakable, borderline west={3pt}{0pt}{shadecolor}, sharp corners, interior hidden, frame hidden, boxrule=0pt]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -1198,6 +1198,75 @@
            \mathcal{L}_{\text{div}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mc} \ | \ G) = \sum_{k=1}^C \sum_{p_i \neq p_j \in P_k} \ \max(0, cos(p_i, p_j) - s_\text{max})
       \end{equation} where \(s_\text{max}\) is a similarity threshold.
   \end{itemize}
+\item
+  Prototype Projection Using MCTS:
+
+  \begin{itemize}
+  \item
+    The learned prototypes are latent embedding vectors which are not
+    directly interpretable. To address this issue, the authors employ a
+    Monte Carlo Tree Search (MCTS) algorithm to find the subgraph within
+    the observed graphs of the prototype's class that has an embedding
+    closest to a given prototype.
+  \item
+    Specifically the author using MCTS to select an optimal sequence of
+    pruning actions.
+  \item
+    Let \(\mathcal{G}_{0, \ i, \dots, j}\) represent the subgraph
+    resulting from the sequence of pruning actions
+    \(\text{act}_i,\dots, \text{act}_j\), where \(\mathcal{G}_0\), the
+    root of the search tree, is the observed graph.
+  \item
+    The MCTS algorithm works in 4 steps:
+
+    \begin{enumerate}
+    \def\labelenumi{\arabic{enumi}.}
+    \item
+      An existing node in the search tree
+      \(\mathcal{G}_{0, \ i, \dots, j}\) is \emph{selected}.
+    \item
+      \(\mathcal{G}_{0, \ i, \dots, j}\) is \emph{expanded} adding a
+      child node \(\mathcal{G}_{0, \ i, \dots, j, k}\) resulting from
+      action \(\text{act}_k\). To limit the search space, the author
+      restrict \(\text{act}_k\) to be the removal a peripheral node with
+      minimum degree.
+    \item
+      Then the reward for the sequence of actions \(i, \dots, j, k\) is
+      estimated via a Monte Carlo \emph{simulation} where random actions
+      are taken until a subgraph of the desired size is produced. The
+      subgraph embeddings are then compared to the prototype vector and
+      the similarities are averaged.
+    \item
+      The child nodes estimated score is then \emph{backpropagated} to
+      update the estimated scores of all its parent nodes.
+    \end{enumerate}
+  \item
+    After a fixed set of iterations, the decision path the highest
+    resulting score is selected to produce the prototype projection.
+    This process is repeated across all observed graphs in the
+    prototype's class.
+  \end{itemize}
+\item
+  Conditional Subgraph Sampling:
+
+  \begin{itemize}
+  \item
+    In addition to finding the closest subgraph in the observed class,
+    the authors also suggest a method for efficient finding similar
+    subgraph in each input.
+  \item
+    This is done by training a neural network to predict an edge mask,
+    conditional on a prototype vector. The resulting induced subgraph's
+    embeddings are optimized to be also close as possible to the given
+    prototype, thus producing a similar observed subgraph per learned
+    prototype. \begin{equation}
+      \hat A[i, \ j] = \text{nn}\left(G, p_k; \ \Omega_{\text{nn}}\right)
+      \end{equation}
+  \end{itemize}
+
+  \begin{equation}
+        \mathcal{L}(\Omega_{\text{nn}}, \ \Omega_f, \ p_k \ | \ G) = -\mathams{E}_G \ sim(\hat p_G, p_k) 
+    \end{equation}
 \end{itemize}
 
 \hypertarget{synthesis-of-core-papers}{%

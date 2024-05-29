@@ -625,6 +625,39 @@ number of edges.
         \end{equation}
         where $s_\text{max}$ is a similarity threshold. 
 
+- Prototype Projection Using MCTS:
+
+    - The learned prototypes are latent embedding vectors which are not directly interpretable. To address this issue, the authors employ a Monte Carlo Tree Search (MCTS) algorithm to find the subgraph within the observed graphs of the prototype's class that has an embedding closest to a given prototype. 
+
+    - Specifically the author using MCTS to select an optimal sequence of pruning actions. 
+
+    - Let $\mathcal{G}_{0, \ i, \dots, j}$ represent the subgraph resulting from the sequence of pruning actions $\text{act}_i,\dots, \text{act}_j$, where $\mathcal{G}_0$, the root of the search tree, is the observed graph. 
+
+    - The MCTS algorithm works in 4 steps:  
+
+        1. An existing node in the search tree $\mathcal{G}_{0, \ i, \dots, j}$ is *selected*. 
+
+        2. $\mathcal{G}_{0, \ i, \dots, j}$ is *expanded* adding a child node $\mathcal{G}_{0, \ i, \dots, j, k}$ resulting from action $\text{act}_k$. To limit the search space, the author restrict $\text{act}_k$ to be the removal a peripheral node with minimum degree. 
+
+        3. Then the reward for the sequence of actions $i, \dots, j, k$ is estimated via a Monte Carlo *simulation* where random actions are taken until a subgraph of the desired size is produced. The subgraph embeddings are then compared to the prototype vector and the similarities are averaged.     
+
+        4. The child nodes estimated score is then *backpropagated* to update the estimated scores of all its parent nodes. 
+
+    - After a fixed set of iterations, the decision path the highest resulting score is selected to produce the prototype projection. This process is repeated across all observed graphs in the prototype's class.   
+
+- Conditional Subgraph Sampling:
+
+    - In addition to finding the closest subgraph in the observed class, the authors also suggest a method for efficient finding similar subgraph in each input.  
+
+    - This is done by training a neural network to predict an edge mask, conditional on a prototype vector. The resulting induced subgraph's embeddings are optimized to be also close as possible to the given prototype, thus producing a similar observed subgraph per learned prototype. 
+    \begin{equation}
+        \hat A[i, \ j] = \text{nn}\left(G, p_k; \ \Omega_{\text{nn}}\right)
+    \end{equation}
+
+    \begin{equation}
+        \mathcal{L}(\Omega_{\text{nn}}, \ \Omega_f, \ p_k \ | \ G) = -\mathams{E}_G \ sim(\hat p_G, p_k) 
+    \end{equation}
+
 # Synthesis of Core Papers
 
 - Comparison of generation methods. 
