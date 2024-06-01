@@ -1,0 +1,25 @@
+---
+title: "A Review of Methods for Explainable and Interpretable Graph Neural Networks"
+author: "Art Tay"
+format:
+  pdf:
+     documentclass: article
+     papersize: letter
+     geometry:
+         margin=1in
+     fontsize: 11pt
+     keep-tex: true
+     include-in-header: header.tex
+bibliography: references.bib
+---
+
+# I. Introduction 
+
+# II. Analysis of Core Papers 
+
+# III. Synthesis of Core Papers
+
+# IV. Technical Details 
+
+# V. Future Directions
+
