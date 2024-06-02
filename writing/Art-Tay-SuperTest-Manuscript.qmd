@@ -10,16 +10,163 @@ format:
      fontsize: 11pt
      keep-tex: true
      include-in-header: header.tex
+     link-citations: true
+     number-sections: true
 bibliography: references.bib
 ---
 
-# I. Introduction 
+# Introduction 
 
-# II. Analysis of Core Papers 
+\quad Graphs provide an incredibly flexible structure for modeling complex data. Data can naturally appear as graphs, like molecules. We can reduce data to a graph, such as the key points of a image. We can even use graphs to add structure, such as grammatical relationships. Graph Neural Networks (GNNs) have become a popular choice for prediction and inference on graph data. At their core, GNNs work by iteratively updating node embeddings based on information from neighboring nodes. The idea is to use the graph's structure to engineer better features. This message passing scheme allows GNNs to capture complex dependencies and patterns present within the graph structure. GNN architectures typically consist of multiple layers, each performing message passing and aggregation operations to refine the embeddings. These layers are often followed by pooling and dense prediction layers to produce the final output. Some important applications of graph classification include predicting chemical toxicity [@bai2019unsupervised], classifying proteins [@gallicchio2019fast], and even detecting cancer from pathology slides [@Xiao_Wang_Rong_Yang_Zhang_Zhan_Bishop_Wilhelm_Zhang_Pickering_et_al._2023]. While GNNs achieve remarkable predictive power, their complexity prevents the exaction of the scientific rationale. Like many deep learning models, the black box nature of GNNs prevents wide adoption. Without strong methods for understanding their predictions, GNNs are more susceptible to adversarial attacks and undetected discrimination. Inferential methods also serve to direct modeling efforts by highlighting common structures or features that may be predictive in other applications. These reasons underscore the critical importance of methods for explaining and interpreting GNN models.
 
-# III. Synthesis of Core Papers
+\quad Although explainability and interpretability are sometimes used interchangeably in the literature, we will adopt the distinction expressed in @Yuan_Yu_Gui_Ji_2022. In this article the authors say that a model is explainable if the models predictions can be reasoned post-hoc [@Yuan_Yu_Gui_Ji_2022]. For example, the effect of a specific input variable can be estimated by either dropping or randomly permuting the variable and accessing the effect on the output [@Breiman_2001]. This paradigm could be directly applied to GNNs; however, researchers are often not interested in the statistical significance of tabular node and edge-level features. Most scientific questions focus on the importance of specific graph-level substructures. The challenge with GNN explanations is that, in addition to computing the importance of features, the high-level features themselves must first be identified. On the other hand, a model is interpretable if the model's decision process can be readily understood by humans [@Yuan_Yu_Gui_Ji_2022]. For example, a linear regression model is interpretable because each coefficient clearly defines the relationship between any input and output. An interpretable model is typically superior to an explainable one because similar to a partial F-test, explanation methods might identify that certain variables enhance the model, but they cannot explain how these variables contribute. On the flip side, interpretable models may not reach the performance levels of black-box models. GNN models are generally not interpretable because the relation expressed by the parameters tends to exceed human understanding. A direct translation from traditional statistics would be a circuit type analysis, which has work for image processing convolution neural networks [@olah2020zoom]. For graphs, this would involve using coefficients on subgraphs to produce predictions. Similar to the difficulties of explanation methods, these subgraphs would have to be identified, which can be computational complex and expensive given the combinatorial nature of graphs. Overcoming these challenges has substantial scientific impacts. In applications where GNNs demonstrate strong predictive power, it enables the formulation of testable scientific hypotheses about the nature of the classification. Conversely, in cases where GNNs exhibit weak predictive power, it helps identify and understand potential misunderstandings within the model.
 
-# IV. Technical Details 
+## General Notation 
 
-# V. Future Directions
+- Any graph $G$ can be describe by $X, A, E$. The node feature, matrix, edge feature matrix, and adjacency matrix respectively.  
 
+- Let $X = [X_c, \ X_d]$, where $X_c$ is the subset of continuous node features and $X_d$ is the subset of one-hot discrete node features.  
+
+- Let $E = [E_c, \ E_d]$, denoted in the same manner. 
+
+- Let $n$ represent the number of nodes in the graph and $v$ represent the number of edges.
+
+- For any graph, let $\nu$ denote the set of node and $\mathcal{E}$ denote the set of edges. 
+
+- Let $\text{feat}_{(.)}$ denote the number of features or columns in the the corresponding feature matrix.  
+
+- $A$ is a binary $n \times n$ matrix where $A[i, \ j] = 1$ indicates that an edge exists between nodes labeled $i$ and $j$.  
+
+- Let $\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G$ be an $L$ layer GNN model with parameters $\Omega$ that we would like to explain. 
+
+- Let $\hat Y_G$ be the predicted class label for graph $G$ predicted from explainee().
+
+- Unless otherwise noted, assume any GNN model discussed is a graph-level classification model. 
+
+# Analysis of Core Papers 
+
+## GNNInterpreter [@Wang_Shen_2024]
+
+\quad GNNInterpreter [@Wang_Shen_2024] is a method for generating model-level explanations of GNN graph classification models. In general, explanation methods serve to elucidate which features within the data influence disparate predictions. These methods typically fall into two categories: instance-level and model-level. Instance-level explanations aim to unveil the model’s rationale behind a particular prediction. In domains such as image and text analysis, a prevalent approach involves masking or perturbing the instance and assessing the impact on the model’s prediction. On the other hand, model-level explanations seek to understand how a model generally distinguishes between classes. In image and text analysis, for instance, one common technique involves treating the input as a trainable parameter and optimizing the model’s prediction towards a specific class. Consequently, the resulting optimized input comprises a set of features strongly associated with the targeted class. GNNInterpreter provides model level explanations for GNN in this manner. Formally, GNNInterpreter tries to learn the graph generating distribution for each class. GNNInterpreter works by optimizing the parameters of a generic graph generating distribution to produce samples that closely match the explainee's understanding of the targeted class.
+
+\quad Graph generating distributions are hard to specify because there can be discrete and continuous elements of $X$, $E$ and $A$. Furthermore, the interactions between these matrices can be complex. The authors tackle these issues by making two simplify assumptions. First, they assume that every graph is a *Gilbert random graph* [@Gilbert_1959], where every possible edge as an independent fixed probability of occurring. Second, the author assume that the features of every node and edge are independently distributed. The justification of the first assumption is that the other common types of random graphs are not suitable for this application. Erdo-Renyi random graphs [@erdds1959random] have a fixed number of edges,  which limits the diversity of explanations, Rado random graphs [@Rado1964UniversalGA] are infinite in size, and the random dot-product graph model is just a generalization of Gilbert's model. The second assumption is justified by the fact that the parameters of the independent distributions will be updated jointly using the *explainee* model. Therefore, the *explainee's* understanding of the latent correlation structure should be contained in the final estimates.   
+
+\quad Although the graphs discuss in this paper only contain discrete features, $X_c$ and $E_c$ can be sampled from any continuous distribution that can be expressed as a location-scale family. Separating the stochastic and systematic components is necessary for gradient based optimization. It is commonly known as the *reparametrization trick*. The discrete feature matrices, ($X_d$, $E_d$, $A$), need to be sampled from a continuous distribution for gradient based optimization, but the distribution has to have sampling properties close to a discrete distribution. The author assume that the true underlying distribution for every discrete node and edge feature is *categorical*. The categorical distribution is also know as the multi-bernoulli, where every sample has a fixed probability of being in one of the discrete categories. Let $\theta_\text{cat}$ represent the associated vector of un-normalized or relative probabilities, where each entries is $>0$. Then, 
+
+\begin{equation} \label{gumbel-max-eq}
+    \text{argmax} \ \log \theta_\text{cat} + \text{Gumbel}(0, 1)
+        \sim \text{Cat}(\theta_\text{cat})
+\end{equation}
+
+The intuition is that the Gumbel distribution, which is the density of the maximum order statistic of i.i.d. standard normals, makes it a good candidate for modeling the winning or maximum probability category. Adding Gumbel noise to the logits should maintain the true relative proportions, but enough skewness such that every category has some probability of having the maximum noised logit. A proof of equation \ref{gumbel-max-eq} is provide in section @sec-proof. Approximating the argmax function with the Softmax function allows for approximate categorical sampling that is differentiable w.r.t. $\theta_\text{cat}$. The associate inverse uniform CDF sampling formula below is referred to as the *Gumbel-Softmax trick* or the *concrete distribution* [@Maddison_Mnih_Teh_2017]. 
+\begin{equation}
+    \text{Softmax}
+    \left(
+        \dfrac{\log \theta_{\text{Cat}} - log(-log \ \epsilon)}{\tau}
+    \right), \quad \epsilon \sim U[0, 1].
+\end{equation}
+$\tau$ is a hyperparameter that controls the degree of relaxation. Smaller value of $\tau$ approximate the discrete sampling better, but can result in numerical issues. The adjacency matrix can be sampled in a similar manner since the Bernoulli is just a special case of the categorical.   
+    \begin{equation} \label{binary-concrete}
+        \text{sigmoid}
+            \left(\dfrac{\log(\theta_A / (1 - \theta_A)) + \log \ \epsilon - \log(1 - \log \ \epsilon)}{\tau} \right), \quad \epsilon \sim U[0, 1], 
+    \end{equation}
+where $\theta_A$ is an $n \times n$ matrix with each $[i, j]$ entry representing the relative probability that the $ij$ edge exists. Equation \ref{binary-concrete} samples from the binary concrete distribution [@Maddison_Mnih_Teh_2017]. Taken together, let  
+$$
+    G_{\text{gen}} \sim \text{gen}(\Theta)  
+$$
+
+notate the combined graph generating distribution, where $\Theta$ is the set of all parameters from the independently sampled distributions. 
+
+\quad An obvious objective is to maximize the likelihood that the *explainee* model predicts a sampled graph to be a member of the target class. Let $\tilde{\rho}$ denote the desired predicted probability vector. Then the above objective can be expressed as: 
+    \begin{equation}
+        \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrtEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
+    \end{equation}
+While the above objective enforces a desirable property, it fails to be restrictive enough to generate realistic graphs. This is because the final prediction, $\rho_{G_{\text{gen}}}$ is compute using only final embeddings, $h^{(L)}_{G_{\text{gen}}}$. Normally $h^{(L)}_{G_{\text{gen}}}$ contains all the needed information from the graphs structure; however, the generation scheme allows the feature distribution to be optimized directly. This means that an explanation can ignore the graph structure and optimize towards the desired final embeddings. It is dangerously common for nonsensical features and structures at the graph level to end up on the desired side of the decision boundary. Empirically, the authors found that even completely random graphs can produce confidence and consistent predictions.   
+
+![An abridged copy of Table 5 from @Wang_Shen_2024.](figures/random_baseline.png){fig-align="center" #fig-random-baseline}
+
+For example, @fig-random-baseline shows that random graphs had an average predicted probability of being non-mutagenic in the MUTAG dataset [@Debnath_1991] if 93.2%. In order to mitigate this issue, the authors proposed additional minimizing the cosine distance between the average embedding of all the observed graph from the targeted class, $\bar h^{(L)}_{G_c}$, and the embedding of the generated explanation: 
+    \begin{equation}
+       \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = 
+            \mathams{E}_{G_\text{gen}}
+            \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
+    \end{equation}
+
+  
+
+## D4Explainer [@Chen_Wu_Gupta_Ying_2023]
+
+## ProtGNN [@Zhang_Liu_Wang_Lu_Lee_2021]
+
+# Synthesis of Core Papers
+
+# Technical Details 
+
+## Methodology
+
+## Results
+
+## Proofs {#sec-proof}
+
+**Proof of Equation \ref{gumbel-max-eq}:** WLOG assume we want to sample for a categorical distribution $\text{cat}(\theta_\text{cat})$ with a set of $W$ categories each with a probability 
+$$
+\pi_\omega = \dfrac{\theta_\text{cat}[\omega]}{\sum_{i \in W}\theta_\text{cat}[i]}.
+$$ 
+
+Define random variable 
+$$
+D = \text{argmax} \ \log \theta_\text{cat} + \text{Gumbel}(0, 1) = \underset{i \in W}{\text{argmax}} \ \log \theta_\text{cat}[i] + \text{Gumbel}(0, 1)[i], 
+$$
+
+here $\text{Gumbel}(0, 1)[i]$ denotes the $i^{th}$ i.i.d. sample from the associated Gumbel. In order for $D$ to be a true categorical random variable, $Pr[D = \omega]$ need to be $\pi_\omega$. $D = \omega$ if and only if $\log \theta_\text{cat}[\omega]  + \text{Gumbel}(0,1)[\omega] > \log \theta_\text{cat}[i] + \text{Gumbel}(0, 1)[i] \ \forall i \in W \setminus \omega$. Now, let $M_i$ denote a random variable that follows a $\text{Gumbel}(\log \theta_\text{cat}[i], 1)$ distribution. Then, 
+    \begin{align*}
+        Pr[D = \omega] 
+            &= \mathams{E}_{M_\omega} 
+                \prod_{i \in W \setminus \omega} Pr(M_i < m_\omega) 
+                \text{ i.i.d location shifted Gumbel distributions.} \\ 
+            &= \mathams{E}_{M_\omega} 
+                \prod_{i \in W \setminus \omega} \exp 
+                    \left(-e^{\log \theta_\text{cat}[i] - m_\omega} \right)
+                \text{ Gumbel CDF.} \\ 
+            &= \mathams{E}_{M_\omega} 
+                \exp \left(-\sum_{i \in W \setminus \omega}
+                e^{\log \theta_\text{cat}[i] - m_\omega} \right) \\ 
+            &= \int_{-\infty}^{\infty}
+                \exp \left( \log \theta_\text{cat}[\omega] - m_\omega \right) 
+                \exp \left(-e^{\log \theta_\text{cat}[\omega] - m_\omega} \right) \cdot 
+                \exp \left (-\sum_{i \in W \setminus \omega}
+                e^{\log \theta_\text{cat}[i] - m_\omega} \right) \ dm \\
+                &\text{ Gumbel PDF.} \\
+            &= \int_{-\infty}^{\infty}
+                \exp \left( \log \theta_\text{cat}[\omega] - m_\omega \right) 
+                \exp \left (-\sum_{i \in W}
+                e^{\log \theta_\text{cat}[i] - m_\omega} \right) \ dm \\
+            &= \int_{-\infty}^{\infty}
+                \theta_\text{cat}[\omega] 
+                \exp \left( -m_\omega \right) 
+                \exp \left( -e^{-m_\omega} \sum_{i \in W}
+                    \theta_\text{cat}[i]  \right) \ dm \\
+            &= \pi_\omega \sum_{i \in W} \theta_\text{cat}[i]
+            \int_{-\infty}^{\infty}
+                \exp \left( -m_\omega \right) 
+                \exp \left( -e^{-m_\omega} \sum_{i \in W}
+                    \theta_\text{cat}[i]  \right) \ dm 
+                    \text{ From the above definition of } \pi_\omega \\
+            &= \pi_\omega \sum_{i \in W} \theta_\text{cat}[i]
+                \dfrac{\exp\left( -e^{-m_\omega} \sum_{i \in W} \theta_\text{cat}[i] \right)
+                    }{\sum_{i \in W} \theta_\text{cat}[i]} \bigg|_{-\infty}^\infty \\ 
+            &= \pi_\omega \sum_{i \in W} \theta_\text{cat}[i]
+                \dfrac{1}{\sum_{i \in W} \theta_\text{cat}[i]} = \pi_\omega. 
+    \end{align*}
+    Reference: @Huijben_Kool_Paulus_van_Sloun_2022 
+
+# Future Directions
+
+\pagebreak 
+
+# References
+
+::: {#refs}
+:::
+
+# Appendix 
