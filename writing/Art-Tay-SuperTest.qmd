@@ -299,7 +299,7 @@ number of edges.
     
     - For example, for the mutagen class, the explanation correctly identifies the importance of the N02 group; however, the generated graph isn't realistic and might not even be chemically possible. Furthermore, the non-mutagen example doesn't display any clear patterns or identifiable structures.   
 
-    - The explanations for the Cyclicity dataset as well as the Wheel class do not appear to be members of the underlying data distribution. 
+    - The explanations for the Cyclicity dataset as well as the Wheel and Grid classes do not appear to be members of their respective underlying data distributions. 
 
     - GNNInterpreter provides a way of generating example graph that would be classified as a target class by a GNN model, without needing to specify domain specific rules. On the other hand, optimizing predictions and even embeddings does not appear to be a sufficient objective for producing in-distribution graphs. The author correctly point out that optimizing predictions can lead to unrealistic graphs, but they have also inadvertently demonstrated that optimizing embeddings is not necessarily sufficient either.       
 

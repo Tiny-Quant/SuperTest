@@ -70,7 +70,7 @@ $\tau$ is a hyperparameter that controls the degree of relaxation. Smaller value
         \text{sigmoid}
             \left(\dfrac{\log(\theta_A / (1 - \theta_A)) + \log \ \epsilon - \log(1 - \log \ \epsilon)}{\tau} \right), \quad \epsilon \sim U[0, 1], 
     \end{equation}
-where $\theta_A$ is an $n \times n$ matrix with each $[i, j]$ entry representing the relative probability that the $ij$ edge exists. Equation \ref{binary-concrete} samples from the binary concrete distribution [@Maddison_Mnih_Teh_2017]. Taken together, let  
+where $\theta_A$ is an $n \times n$ matrix with each $[i, j]$ entry representing the relative probability that the $ij$ edge exists. Equation \ref{binary-concrete} samples from the *binary concrete distribution* [@Maddison_Mnih_Teh_2017]. Taken together, let  
 $$
     G_{\text{gen}} \sim \text{gen}(\Theta)  
 $$
@@ -83,7 +83,7 @@ notate the combined graph generating distribution, where $\Theta$ is the set of 
     \end{equation}
 While the above objective enforces a desirable property, it fails to be restrictive enough to generate realistic graphs. This is because the final prediction, $\rho_{G_{\text{gen}}}$ is compute using only final embeddings, $h^{(L)}_{G_{\text{gen}}}$. Normally $h^{(L)}_{G_{\text{gen}}}$ contains all the needed information from the graphs structure; however, the generation scheme allows the feature distribution to be optimized directly. This means that an explanation can ignore the graph structure and optimize towards the desired final embeddings. It is dangerously common for nonsensical features and structures at the graph level to end up on the desired side of the decision boundary. Empirically, the authors found that even completely random graphs can produce confidence and consistent predictions.   
 
-![An abridged copy of Table 5 from @Wang_Shen_2024.](figures/random_baseline.png){fig-align="center" #fig-random-baseline}
+![An abridged copy of Table 5 from @Wang_Shen_2024.](figures/random_baseline.png){fig-align="center" #fig-random-baseline width="90%"}
 
 For example, @fig-random-baseline shows that random graphs had an average predicted probability of being non-mutagenic in the MUTAG dataset [@Debnath_1991] if 93.2%. In order to mitigate this issue, the authors proposed additional minimizing the cosine distance between the average embedding of all the observed graph from the targeted class, $\bar h^{(L)}_{G_c}$, and the embedding of the generated explanation: 
     \begin{equation}
@@ -92,9 +92,134 @@ For example, @fig-random-baseline shows that random graphs had an average predic
             \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
     \end{equation}
 
-  
+Additionally, the author wanted to encourage sparsity for ease of interpretation. This was done by employing an $L_1$, $L_2$, and a budget penalty on the edge probabilities:  
+    \begin{equation}
+        \mathcal{L}_{\text{spars}}(\theta_A) = ||\theta_A||_1 + ||\theta_A||_2 + \text{softplus}(\text{sigmoid}||\theta_A||_1 - B)^2, 
+    \end{equation}
+where $B$ is the expected maximum number of edge for generated explanation graphs.Connectivity is another desirable property as it ensures a cohesive explanation. To encourage connectivity the author minimize the *KL-Divergence* between edge probabilities that share a common node.
+    \begin{equation}
+        \mathcal{L}_{\text{conn}}(\theta_A) = \sum_{i \in \nu} \sum_{j, k \in \mathcal{E}(i)} D_{KL}(\text{sigmoid}(\theta_A[i, \ j]) \ || \ \text{sigmoid}(\theta_A[i, \ k])), 
+    \end{equation}
+where $\mathcal{E}(i)$ is the set of edges that connect to node $i$.
+
+\quad The final generator model is trained by sampling $G_\text{gen} \sim \text{gen}(\Theta)$ and then iteratively updating $\Theta$ via gradient descent on the full loss:
+    \begin{equation}
+        \begin{split}
+            \mathcal{L}_{\text{GNNInterpreter}}(\Theta \ | \ G_\text{gen}) = 
+            &\lambda_1 \mathcal{L}_{\text{pred}}(\Theta \ | \ G_\text{gen}) + 
+            \lambda_2 \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) +  \\
+            &\lambda_3 \mathcal{L}_{\text{spars}}(\Theta \ | \ G_\text{gen}) +
+            \lambda_4 \mathcal{L}_{\text{conn}}(\Theta \ | \ G_\text{gen}) 
+        \end{split}
+    \end{equation}
+GNNInterpreter achieves remarkable accuracy on most target classes, with most intervals in @fig-GNNInt-pred-results being tight and very close to 1. This indicates that the generated examples are almost always classified as the targeted class. The explanations for the house motif and the lollipop shape perform worse in terms of predictions. Although the authors critique the use of predictions as the sole objective, they do not employ any other quantitative metrics to evaluate the validity of their explanations.
+
+![A copy of the quantitative modeling results from Table 2 in @Wang_Shen_2024.](figures/GNNInt_prediction_results.png){fig-align="center" #fig-GNNInt-pred-results width="90%"}
+
+![A copy of the qualitative modeling results from Figure 1 in @Wang_Shen_2024.](figures/GNNInt_drawn_results.png){fig-align="center" #fig-GNNInt-Drawn width="80%"}
+
+Qualitatively, @fig-GNNInt-Drawn displays limitations in terms of realism. For instance, for the mutagen class, the explanation correctly identifies the importance of the N02 group; however, the generated graph is unrealistic and might not even be chemically feasible. Additionally, the non-mutagen example lacks clear patterns or identifiable structures. The explanations for the Cyclicity dataset, as well as the Wheel and Grid classes, do not seem to be from their respective underlying data distributions. In summary, GNNInterpreter offers a method for generating example graphs that would be classified as a targeted class by a GNN model, without requiring domain-specific rules. However, optimizing for predictions and even embeddings alone does not seem to be a sufficient objective for producing in-distribution graphs. While the authors correctly note that focusing on predictions can lead to unrealistic graphs, they also inadvertently show that optimizing embeddings alone is not necessarily sufficient either.
 
 ## D4Explainer [@Chen_Wu_Gupta_Ying_2023]
+
+\quad D4Explainer [@Chen_Wu_Gupta_Ying_2023], or in-**D**istribution GNN Explanations via **D**iscrete **D**enoising **D**iffusion, directly addresses the realism of generated graphs in model-level explanations by using a diffusion based generator model. In the image domain, diffusion models have proven to produce more realistic images than other generative AI methods, such as Generative Adversarial Networks (GANs). These models work by iteratively adding noise to an observation until it becomes pure noise. A denoising model is then trained to predict the noise added at any step. New observations can be generated by reversing this process, passing pure noise through the denoising model, a technique known as reverse sampling. Additional objectives, such as a desired class label, can be added to the loss function to generate samples with certain properties.   
+
+\quad The authors here are focused on *discrete structural diffusion*. D4Explainer generate example graph by noising and denoising the adjacency matrices of observed graphs. The sampled graphs have the same features, but different structures. The process of gradually adding noise to the input data is called *forward diffusion*. During forward diffusion, random noise is added iteratively until the data becomes pure noise at the final iteration. This ensures that the denoising model can start with pure noise. Forward diffusion is usually a Markov process. Let $t \in [0, T]$ denote the current iteration. Let $\beta_t$ be the common probability that any edge changes state at time step $t$. $(\beta_1, \dots, \beta_T)$ is known as the variance schedule and is a set hyperparameter. Let $A_t$ be a one-hot encoded version of the $t^{th}$ noised adjacency. Then the forward diffusion process can be expressed as:  
+    \begin{equation}
+         A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{t-1}[i, \ j]) 
+            = \text{Cat}(A_{t-1}[i, \ j] \cdot Q_t)
+    \end{equation}
+    or 
+    \begin{equation}
+         A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{0}[i, \ j]) 
+            = \text{Cat}\left(A_0[i, \ j] \prod_{i=1}^t  Q_i \right)
+    \end{equation}
+    where, 
+    $$
+    Q_t = 
+    \left[
+    \begin{matrix}
+        1-\beta_t & \beta_t \\ 
+        \beta_t & 1 - \beta_t
+    \end{matrix}
+    \right]
+    $$
+the $t^{th}$ element-wise transition matrix. Even though only the adjacency matrix is being noised, the authors still wanted to use all of the available information during the *backwards diffusion* process. Thus the denoising model was parameterized as: 
+    \begin{equation}
+         p(A_0 \ | \ A_t, t, X_0, E_0; \ \Omega)  
+    \end{equation}
+where $\Omega$ is the set of trainable parameters. The authors employed a *Provably Powerful Graph Network* (PPGN) [@Maron_Ben-Hamu_Serviansky_Lipman_2020] as their denoising architecture; however, they have added an additional neural network to learn the time or noise level effect. Like most diffusion models, the primary objective is to minimize the distance between the predicted denoised observation and the original. The authors have added an additional weight term to focus the model on noisier or more difficult training examples. The core loss function is expressed as: 
+    \begin{equation} \label{L-dist}
+        \mathcal{L}_{dist} (\Omega \ | \ A_0) =  \sum_{t=1}^T 
+            \left(1 - 2 \bar \beta_t + \dfrac 1 T \right)
+            \mathams{E}_{\hat A_0}
+            \text{CrtEnt} \left(
+                A_0, \hat A_0
+            \right), 
+    \end{equation}
+where $\hat A_0 = p(A_0 \ | \ A_t, t, X_0, E_0; \ \hat \Omega)$, $A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{0}[i, \ j])$, and 
+$$
+    \bar \beta_t = \frac 1 2 - \frac 1 2 \prod^t_{i=1}(1-2\beta_i), 
+$$ 
+
+the cumulative transition probability. After the denoising model has been trained, model-level explanations are produced by iterative sampling candidate adjacency structures for an observed set of graph features and selecting the candidate with the highest probability of being from the targeted class. This is a multi-step procedures, where at each step $A_t$ is denoised to $k$ candidates $A_0, 1 \dots k$. The candidate with the best predicted probability is then noised to a level of $t-1$ and the process is repeated. The pseudocode is reproduced below.
+    \begin{algorithm}
+    \caption{D4Explainer Model-level Explanation Reverse Sampling Algorithm}\label{alg:cap}
+    \begin{algorithmic}
+        \Require $\hat \Omega$: trained denoising parameters; 
+                $q(A_t \ | \ A_0)$: forward diffusion process.
+        \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+        \renewcommand{\algorithmicensure}{\textbf{Output:}}
+        \Require N: maximum number of nodes; T: maximum noise level; 
+                K: number of candidates per iteration; 
+                $\tilde{\rho}$ targeted prediction vector; 
+                $(X, E)$: node and edge features.  
+        \Ensure $\hat A$: adjacency matrix for model-level explanation.
+        \State Sample $A_T[1:n, 1:n]$ \sim Bernoulli(0.5)
+        \For{t in T to 1}
+            \State Sample candidates 
+                $\{\hat A_{0, k} \sim p(A_t,t, X, E; \ \hat \Omega) : k \in 1, \dots, K\}$
+            \State Select the best candidate 
+            $\underset{j \ \in \ i, \dots K}{\text{argmin}}$ 
+            CrtEnt(explainee($G = (X, A_{0, j}, E)), \ \tilde{\rho}$)
+            \State Sample $A_{t-1}[1:n, 1:n] \sim q(A_{t-1}, A_{0, j})$
+        \EndFor
+        \State \Return $A_0$
+    \end{algorithmic}
+    \end{algorithm}
+
+\quad To assess how well a sampled explanation matches the observed graph distribution, the authors compute various maximum mean discrepancy (MMD) statistics. MMD is a general technique used to measure the distance between two data distributions based solely on observed data. The distributions are estimated using *kernel density estimation*, and then the distance between their means is compared. As long as the chosen kernel is *characteristic*, an MMD statistics defined as the l2 distance between *kernel mean embeddings* is representative of the distance between the true distributions [@Gretton_Borgwardt_Rasch_Schölkopf_Smola_2012]. The *Gaussian Earth Mover’s Distance kernel* was selected here. The author use MMD statistics to compare the degree, clustering, and spectrum distributions of the generated explanation against the observed data. The degree distribution of a graph indicates how frequently nodes have different numbers of connections, reflecting the overall connectivity pattern. The clustering coefficient of a node measures the proportion of the node's neighbors that are also connected to each other, representing local clustering. The spectrum distribution, which is the distribution of eigenvalues of the adjacency matrix or Laplacian matrix, provides insights into the graph’s structural characteristics and dynamic properties. Similar to GNNInterpreter, the author of D4Explainer also value the sparsity of their generate example. They measure the density of a graph as the number of present edges divided by the number of possible edges or 
+    \begin{equation}
+        \text{Density} = \mathcal{|E|} / |\nu|^2. 
+    \end{equation}
+
+\quad In additional to model-level explanations, D4Explainer can provide *counterfactual explanations* by adding a term to the loss function. The authors define a counterfactual explanation for a particular observed graph to be $G^c$ such that $\hat Y_{G^c} \neq \hat Y_G$, but the difference between $G^c$ and $G$ is minimal. $\mathcal{L}_{dist}$ (\ref{L-dist}) ensures that the $G^c$ generated does not stray too far from the observed graph distribution, and adding $\mathcal{L}_{CF}$ minimize the probability that the generated graph is classified the same as the input. 
+    \begin{equation}
+         \mathcal{L}_{CF}(\Omega \ | \ A_0) = 
+            \mathams{E}_{\hat A_0} - \log(1 - \rho_{G^c}[\hat Y_{G}]), 
+    \end{equation} 
+where $G = (X, A, E)$ is an observed graph, $G^c = (X, \hat A_0, E)$, and $\rho_{G^c}[\hat Y_{G}]$ denote the probability that $G^c$ belongs to the same class as $G$. To quantify the quality of generated counterfactual explanations, the author report *Counterfactual Accuracy*, *Fidelity*, and *modification ratio*. CF-ACC measure the proportion of $G^c$s that have different predicted labels than there associated observed graph.  
+    \begin{equation}
+            \text{CF-ACC} = \mathams{E}_{\hat A_0} \ I(\hat Y_{G^c} \neq \hat Y_{G}) 
+    \end{equation}
+
+Fidelity measures the difference in the predicted probability of $G$ and $G^c$ with respected to the original class label.  
+    \begin{equation}
+        \text{Fidelity} = \mathams{E}_{\hat A_0} \ \rho_{G}[\hat Y_G] - \rho_{G^c}[\hat Y_G]
+    \end{equation}
+
+Finally, modification ratio measures difference in edges between $G^c$ and $G$ relative to the size of the original graph.  
+    \begin{equation}
+        \text{MR} = \mathams{E}_{\hat A_0} \ \dfrac{|\sum_{i, j} A[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A[i, j]}
+    \end{equation}
+
+\quad Similar to GNNInterpreter, the author report the mean predicted probability for the targeted class. Using a maximum of 6 nodes, the author were able to achieve a mean of 0.832 on the MUTAG dataset. Since the counterfactual explanation are generated on a per observation basis, the author's compared their method to other popular instance-level explanation methods.     
+
+![Comparison of the CF-ACC relative to MR of various methods and datasets. A copy of Figure 4 from @Chen_Wu_Gupta_Ying_2023.](figures/D4-CF-Plot.png){fig-align="center" width="90%" #fig-D4-CF-ACC}
+
+@fig-D4-CF-ACC displays that D4Explainer can flip the prediction on roughly 80% of observed graphs at most modification levels. Missing from the plot is a variance measure. It is possible that the counterfactual accuracy varies more between different data splits or hyperparameter than the other methods. @fig-D4-MMD indicates that the D4Explainer generated graphs tend to have feature distributions that are closer to the original dataset; however, there might be a hidden class bias. The distributions might only be close for the majority class, skewing the averages.      
+
+![MMD statistic for various methods and datasets copied from Table 2 in @Chen_Wu_Gupta_Ying_2023.](figures/D4-MMD-Table.png){fig-align="center" width="90%" #fig-D4-MMD}
 
 ## ProtGNN [@Zhang_Liu_Wang_Lu_Lee_2021]
 
