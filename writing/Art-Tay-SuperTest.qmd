@@ -667,7 +667,7 @@ number of edges.
 
     - ProtGNN is also robust to the choice of embedding model as the author have shown benefits across various GNN architectures. 
 
-    - The author not that the computational complexity of ProtGNN can be significantly higher than a standard GNN model taking roughly 5 times longer to train. Most of this complexity is attributable to the use of the MCTS.   
+    - The author note that the computational complexity of ProtGNN can be significantly higher than a standard GNN model taking roughly 5 times longer to train. Most of this complexity is attributable to the use of the MCTS.   
 
     - On the other hand ProtGNN produces much clearer results. Analogous to a regression model, the prototypes can be thought of as features, the similar subgraphs and similarity scores as the observed feature values, and the class connections as the marginal effects on the prediction.         
     ![](figures/prot_inference_ex.png)

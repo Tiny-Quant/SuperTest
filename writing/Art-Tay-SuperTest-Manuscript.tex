@@ -184,7 +184,7 @@ Neural Networks}
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[borderline west={3pt}{0pt}{shadecolor}, frame hidden, breakable, sharp corners, interior hidden, boxrule=0pt, enhanced]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[frame hidden, enhanced, sharp corners, interior hidden, boxrule=0pt, borderline west={3pt}{0pt}{shadecolor}, breakable]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -414,7 +414,7 @@ the set of all parameters from the independently sampled distributions.
 target class. Let \(\tilde{\rho}\) denote the desired predicted
 probability vector. Then the above objective can be expressed as:
 \begin{equation}
-        \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrtEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
+        \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrsEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
     \end{equation} While the above objective enforces a desirable
 property, it fails to be restrictive enough to generate realistic
 graphs. This is because the final prediction, \(\rho_{G_{\text{gen}}}\)
@@ -592,7 +592,7 @@ as: \begin{equation} \label{L-dist}
         \mathcal{L}_{dist} (\Omega \ | \ A_0) =  \sum_{t=1}^T 
             \left(1 - 2 \bar \beta_t + \dfrac 1 T \right)
             \mathams{E}_{\hat A_0}
-            \text{CrtEnt} \left(
+            \text{CrsEnt} \left(
                 A_0, \hat A_0
             \right), 
     \end{equation} where
@@ -629,7 +629,7 @@ reproduced below.
                 $\{\hat A_{0, k} \sim p(A_t,t, X, E; \ \hat \Omega) : k \in 1, \dots, K\}$
             \State Select the best candidate 
             $\underset{j \ \in \ i, \dots K}{\text{argmin}}$ 
-            CrtEnt(explainee($G = (X, A_{0, j}, E)), \ \tilde{\rho}$)
+            CrsEnt(explainee($G = (X, A_{0, j}, E)), \ \tilde{\rho}$)
             \State Sample $A_{t-1}[1:n, 1:n] \sim q(A_{t-1}, A_{0, j})$
         \EndFor
         \State \Return $A_0$
@@ -744,6 +744,151 @@ datasets copied from Table 2 in Chen et al.
 (\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{Zhang et al.
 2021})}{ProtGNN (Zhang et al. 2021)}}\label{protgnn-zhang_liu_wang_lu_lee_2021}}
 
+\quad Up until now, we have been discussing post-hoc explanation
+methods; however, Rudin (\protect\hyperlink{ref-Rudin_2019}{2019})
+raises two important concerns with this approach. First, parity in the
+predictions does not guarantee parity in the reasoning. Explanations may
+bear strong predictions, but for distinct and sometimes nonsensical
+reasons. Recall that Figure~\ref{fig-random-baseline} showed that
+completely random graphs can illicit confident predictions. Second,
+feature importance indicates that a feature is significant to the model,
+but it does not reveal how the model uses the feature. For instance, a
+substructure might lead to a prediction due to a strong relation with
+the target class, or it could be important because of a strong negative
+relation with other classes. ProtGNN
+(\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{Zhang et al. 2021})
+uses the prototype modeling paradigm to create a GNN that is
+\emph{interpretable}. Prototype based models make prediction by
+comparing new inputs to exemplar cases or \emph{learned prototypes} of
+each class. This results in an interpretable model because, as long as
+the prediction function applied to the prototype similarity scores is
+simple, the reasoning for any given prediction will be clear.
+Intuitively, this can be thought of as using a black-box model to
+engineer features, which are then passed to a straightforward white-box
+model.
+
+\quad ProtGNN initializes \(m\) random prototype vectors for each of the
+\(C\) classes. Let \(p_k\) denote a prototype vector and \(P_{Y_G}\)
+denote the set of prototypes vectors assigned to the ground truth label
+of \(G\), \(Y_G\). Now, let \(f(G; \ \Omega_f) = \hat p_G\) be a graph
+encoder function that maps any graph into the prototype vector space,
+where \(\Omega_f\) is the set of trainable parameters. \(f\) is
+generally one of the standard GNN architectures. Since ProtGNN was
+primarily designed to be a graph classification model, the author
+optimized for predictive power using:\\
+\begin{equation}
+        \mathcal{L}_{\text{prot}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mC} \ | \ G)= \mathams{E}_G \ \text{CrsEnt} \left[\psi \left(sim\left(\hat p_G, p_1\right), \dots, sim\left(\hat p_G, p_{mC}\right); \ \Omega_\psi\right), \ Y_G \right]
+    \end{equation} where \(\psi\) is any simple prediction model with
+trainable parameters \(\Omega_\psi\) and \(sim\) is any vector
+similarity function. ProtGNN uses a full connected layer with a softmax
+output activation for \(\psi\), which is similar to a multinomial
+regression model. To address similar out-of-distribution concerns
+discussed earlier, the authors include three additional loss terms as
+constraints. The cluster loss ensure that each embedding is close to at
+least one prototype assigned to its ground truth class:\\
+\begin{equation}
+        \mathcal{L}_{\text{clst}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mC} \ | \ G) = \mathams{E}_G \ \underset{p_k \in P_{Y_G}}{\text{min}} || \hat p_G - p_k ||^2_2. 
+    \end{equation} A separation loss ensures that embeddings are far
+from the prototypes of other classes: \begin{equation}
+        \mathcal{L}_{\text{sep}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mC} \ | \ G) = - \mathams{E}_G \ \underset{p_k \notin P_{Y_G}}{\text{min}} || \hat p_G - p_k ||^2_2. 
+    \end{equation} Finally, the diversity loss encourages each prototype
+within a class to learn different information:\\
+\begin{equation}
+            \mathcal{L}_{\text{div}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mC} \ | \ G) = \sum_{k=1}^C \sum_{p_i \neq p_j \in P_k} \ \max(0, cos(p_i, p_j) - s_\text{max})
+    \end{equation} where \(s_\text{max}\) is a set similarity threshold.
+
+\quad The learned prototypes are latent embedding vectors that are not
+directly interpretable. To address this issue, the authors use a Monte
+Carlo Tree Search (MCTS) algorithm
+(\protect\hyperlink{ref-Coulom2006EfficientSA}{Coulom 2006}) to identify
+the subgraph within the observed graphs of the prototype's class that
+has an embedding closest to the given prototype. Specifically, the
+author use the MCTS to select an optimal sequence of pruning actions.
+Let \(\mathcal{G}_{0, \ i, \dots, j}\) represent the subgraph resulting
+from the sequence of pruning actions
+\(\text{act}_i,\dots, \text{act}_j\), where \(\mathcal{G}_0\), the root
+of the search tree, is an observed graph. The MCTS algorithm proceeds in
+4 core steps. First, an existing node in the search tree
+\(\mathcal{G}_{0, \ i, \dots, j}\) is \emph{selected}. Second, the
+chosen node is \emph{expanded} by adding a child node
+\(\mathcal{G}_{0, \ i, \dots, j, k}\) resulting from action
+\(\text{act}_k\). To limit the search space, the authors restrict
+\(\text{act}_k\) to be the removal of a peripheral node with minimum
+degree. Third, the reward for the sequence of actions \(i, \dots, j, k\)
+is estimated via a Monte Carlo \emph{simulation} where additional random
+actions are taken until a subgraph of the desired size is produced. The
+sampled embeddings are then compared to the prototype vector and the
+similarities are averaged. Finally, the child node's estimated score is
+then \emph{backpropagated} to update the estimated scores of all its
+parent nodes. After a fixed number of iterations through the observed
+graphs from the prototype's class, the decision path with the highest
+resulting score is selected to produce the ultimate prototype
+projection. In addition to finding the closest subgraph in the observed
+class, the authors also suggest a method for finding similar subgraphs
+within each input. This is done by training a neural network to predict
+an edge mask conditional on a prototype vector:\\
+\begin{equation}
+        \hat A[i, \ j] = \text{nn}\left(G, p_k; \ \Omega_{\text{nn}}\right).  
+    \end{equation}
+
+The resulting induced subgraphs' embeddings are then optimized to be as
+close as possible to the given prototype: \begin{equation}
+        \mathcal{L}(\Omega_{\text{nn}}, \ \Omega_f, \ p_k \ | \ G) = -\mathams{E}_G \ sim(\hat p_G, p_k), 
+    \end{equation}
+
+thus producing a similar observed subgraph per learned prototype. The
+authors denote the version of the model that utilizes this
+\emph{conditional subgraph sampling module}, in addition to the above
+losses, as \textbf{ProtGNN+}.
+
+\quad ProtGNN achieves similar or better graph classification accuracy
+than state of the art models across 5 standard benchmark datasets (see
+Figure~\ref{fig-prot-acc-table}).
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{figures/prot_acc_table.png}
+
+}
+
+\caption{\label{fig-prot-acc-table}A copy of the quantitative modeling
+results report in Table 1 of Zhang et al.
+(\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{2021}).}
+
+\end{figure}
+
+Figure~\ref{fig-prot-acc-table} also indicates that ProtGNN is robust to
+the choice of embedding model as there seems to be benefits across
+various GNN architectures. The authors do note that the computational
+complexity of ProtGNN can be significantly higher than a standard GNN
+model, taking roughly 5 times longer to train. Most of this complexity
+is attributable to the use of the MCTS. On the other hand, ProtGNN
+allows for easier and clearer inference. Figure~\ref{fig-prot-diagram}
+demonstrates that the output of ProtGNN is similar to a simple
+regression model. The prototypes can be thought of as features, the
+similar subgraphs and similarity scores as the observed feature values,
+and the class connections as the marginal effects on the prediction.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{figures/prot_inference_ex.png}
+
+}
+
+\caption{\label{fig-prot-diagram}An example ProtGNN+ output for the
+MUTAG dataset taken from Figure 3 in Zhang et al.
+(\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{2021}).}
+
+\end{figure}
+
+Since prototypes from every class are used for the classification,
+ProtGNN can also be used for counterfactual type analysis. For any given
+predictions, researcher can determine why a certain classification was
+made and why the other classes were not selected.
+Figure~\ref{fig-prot-diagram} display both a strong similarity to the
+mutagenic prototypes as well as a weaker relation to the non-mutagenic
+prototypes.
+
 \hypertarget{synthesis-of-core-papers}{%
 \section{Synthesis of Core Papers}\label{synthesis-of-core-papers}}
 
@@ -843,6 +988,11 @@ Chen, Jialin, Shirley Wu, Abhijit Gupta, and Rex Ying. 2023.
 Diffusion,''} no. arXiv:2310.19321 (October).
 \url{https://doi.org/10.48550/arXiv.2310.19321}.
 
+\leavevmode\vadjust pre{\hypertarget{ref-Coulom2006EfficientSA}{}}%
+Coulom, Rémi. 2006. {``Efficient Selectivity and Backup Operators in
+Monte-Carlo Tree Search.''} In \emph{Computers and Games}.
+\url{https://api.semanticscholar.org/CorpusID:16724115}.
+
 \leavevmode\vadjust pre{\hypertarget{ref-Debnath_1991}{}}%
 Debnath, Asim Kumar, Rosa L. Lopez de Compadre, Gargi Debnath, Alan J.
 Shusterman, and Corwin Hansch. 1991. {``Structure-Activity Relationship
@@ -895,6 +1045,12 @@ Circuits.''} \emph{Distill}.
 Rado, Richard. 1964. {``Universal Graphs and Universal Functions.''}
 \emph{Acta Arithmetica} 9: 331--40.
 \url{https://api.semanticscholar.org/CorpusID:118279788}.
+
+\leavevmode\vadjust pre{\hypertarget{ref-Rudin_2019}{}}%
+Rudin, Cynthia. 2019. {``Stop Explaining Black Box Machine Learning
+Models for High Stakes Decisions and Use Interpretable Models
+Instead,''} no. arXiv:1811.10154 (September).
+\url{https://doi.org/10.48550/arXiv.1811.10154}.
 
 \leavevmode\vadjust pre{\hypertarget{ref-Wang_Shen_2024}{}}%
 Wang, Xiaoqi, and Han-Wei Shen. 2024. {``GNNInterpreter: A Probabilistic
