@@ -706,7 +706,7 @@ number of edges.
 
 - D4Explainer produces counterfactual examples be directly compute possible input changes that flip the prediction, while ProtGNN demonstrates how the prediction could have changed by display the similarity to structures indicative of other classes. While not the traditional directly counterfactual analysis, ProtGNN provides model-level insight.   
 
-
+- Results + Big Picture in the Literature
 
 # Technical Details 
 
@@ -916,7 +916,6 @@ The most worrisome bias arises between the distances from cluster 0 to 1 and fro
 - This elimates the need for the upward prediction back to the graph space, which addresses issue 1.     
 
 - Since $X_{p_k}, A_{p_k}, \ E_{p_k}$ are free trainable parameters, they could contain structure that weren't entirerly observed in the original dataset.  
-
 
 - We expect sample size to be a limiting factor. Although ProtGNN uses fairly high dimensional vectors for their prototypes, graph prototypes might still introduce exponentially more parameters. The size and sparity of the graph prototypes could be enforce, but it would introduces additional hyperparmeters. If the dataset is extreme large, then the additional parameters should be okay.  
 

@@ -78,7 +78,7 @@ $$
 notate the combined graph generating distribution, where $\Theta$ is the set of all parameters from the independently sampled distributions. 
 
 \quad An obvious objective is to maximize the likelihood that the *explainee* model predicts a sampled graph to be a member of the target class. Let $\tilde{\rho}$ denote the desired predicted probability vector. Then the above objective can be expressed as: 
-    \begin{equation}
+    \begin{equation} \label{l-pred}
         \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrsEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
     \end{equation}
 While the above objective enforces a desirable property, it fails to be restrictive enough to generate realistic graphs. This is because the final prediction, $\rho_{G_{\text{gen}}}$ is compute using only final embeddings, $h^{(L)}_{G_{\text{gen}}}$. Normally $h^{(L)}_{G_{\text{gen}}}$ contains all the needed information from the graphs structure; however, the generation scheme allows the feature distribution to be optimized directly. This means that an explanation can ignore the graph structure and optimize towards the desired final embeddings. It is dangerously common for nonsensical features and structures at the graph level to end up on the desired side of the decision boundary. Empirically, the authors found that even completely random graphs can produce confidence and consistent predictions.   
@@ -86,14 +86,14 @@ While the above objective enforces a desirable property, it fails to be restrict
 ![An abridged copy of Table 5 from @Wang_Shen_2024.](figures/random_baseline.png){fig-align="center" #fig-random-baseline width="90%"}
 
 For example, @fig-random-baseline shows that random graphs had an average predicted probability of being non-mutagenic in the MUTAG dataset [@Debnath_1991] if 93.2%. In order to mitigate this issue, the authors proposed additional minimizing the cosine distance between the average embedding of all the observed graph from the targeted class, $\bar h^{(L)}_{G_c}$, and the embedding of the generated explanation: 
-    \begin{equation}
+    \begin{equation} \label{l-embed}
        \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = 
             \mathams{E}_{G_\text{gen}}
             \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
     \end{equation}
 
 Additionally, the author wanted to encourage sparsity for ease of interpretation. This was done by employing an $L_1$, $L_2$, and a budget penalty on the edge probabilities:  
-    \begin{equation}
+    \begin{equation} \label{l-spars}
         \mathcal{L}_{\text{spars}}(\theta_A) = ||\theta_A||_1 + ||\theta_A||_2 + \text{softplus}(\text{sigmoid}||\theta_A||_1 - B)^2, 
     \end{equation}
 where $B$ is the expected maximum number of edge for generated explanation graphs.Connectivity is another desirable property as it ensures a cohesive explanation. To encourage connectivity the author minimize the *KL-Divergence* between edge probabilities that share a common node.
@@ -209,7 +209,7 @@ Fidelity measures the difference in the predicted probability of $G$ and $G^c$ w
     \end{equation}
 
 Finally, modification ratio measures difference in edges between $G^c$ and $G$ relative to the size of the original graph.  
-    \begin{equation}
+    \begin{equation} \label{mod-ratio}
         \text{MR} = \mathams{E}_{\hat A_0} \ \dfrac{|\sum_{i, j} A[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A[i, j]}
     \end{equation}
 
@@ -267,11 +267,64 @@ Since prototypes from every class are used for the classification, ProtGNN can a
 
 # Synthesis of Core Papers
 
+\quad GNNInterpreter and D4Explainer are both *post-hoc generative explanation methods*. Each defines a model-level explanation for a given class $c$ as an estimated graph generating distribution:  
+    \begin{equation}
+        G_\text{Gen, c} \sim f(G \ | \ \Theta) \text{ subject to } \underset{\Theta}{\text{argmin}}\ \mathams{E}_{G_\text{Gen}} \ \text{CrsEnt}\left[\text{explainee}(G_\text{Gen}), \ \tilde{\rho_c}\right].
+    \end{equation}
+
+In other words, an explanation is the distribution that maximizes the probability that a sampled graph will be classified by the *explainee* as the desired class $c$. The key difference between the methods is the form of $f(G \ | \ \Theta)$. This is akin to the parametric or distributional assumption for classical statistical methods. GNNInterpreter assumes that each graph matrix has a separate distribution with possibly dependent parameters. On the other hand, D4Explainer assumes that the only random variation between graphs is in the adjacency structure. Both models assume that every entry of the adjacency matrix follows a Bernoulli distribution, but diverge in terms of estimating the probability. The methods also utilize different sampling procedures. GNNInterpreter clearly estimates the distributional parameters and samples traditionally. In contrast, D4Explainer employs a black-box denoising model. D4Explainer makes use of the observed graphs directly, whereas GNNInterpreter only injects latent embeddings. This makes GNNInterpreter much more sensitive to the underlying explainee model. 
+
+\quad Both sets of authors highlight the *out-of-distribution* problem that plagues generative explanations. GNN models are not robust to out-of-distribution or unrealistic graphs, which is to say that explainee models can still return a confident classification for a complete random graph (see @fig-random-baseline). D4Explainer partial resolves this issue by restricting generated node and edge features to the observed values. This ensures that the features of any generated graph will not be out-of-distribution; however, this limits inference. GNNInterpreter tackles the problem by optimizing the similarity to the average class embedding; however, embeddings can also suffer from out-of-distribution problems [@Steck_Ekanadham_Kallus_2024]. Just as an unrealistic or random graph can yield similar predictions, it can also have similar embeddings due to information loss in the lower-dimensional space (see Table \ref{tab-sim}). While GNNInterpreter and D4Explainer place differing restrictions on their respective likelihoods, the terms are interchangeable. For example, there is no reason why $\mathcal{L}_\text{spars}$ (\ref{l-spars}) could not be included in the loss for D4Explainer. Similarly, the MMD statistics from D4Explainer could be used to evaluate graphs generated from GNNInterpreter (see Table \ref{tab-results}). 
+
+\quad ProtGNN, unlike the first two methods, is a *self interpretable GNN model*. Rather than attempting to decipher a predictive model, ProtGNN itself serves as the predictive model. Prototype similarity is closely related to GNNInterpreter's $\mathcal{L}_\text{embed}$ (\ref{l-embed}) as they both measure the similarity between graphs in a latent vector space; however, unlike GNNInterpreter, the embedding function in ProtGNN is trainable. Furthermore, ProtGNN also uses dissimilarity to the non-target classes, but this could be easily added to GNNInterpreter's loss. On the other hand, similar to D4Explainer, the graph projections created from the prototype are restricted to the observed data. It is also worth distinguishing that the similar subgraphs created by ProtGNN+ are instance-level explanations, while the class connection weights and prototype projections are model-level. D4Explainer produces counterfactual examples be directly computing possible input changes that could flip the prediction, while ProtGNN demonstrates how the prediction could have changed by display the similarity to structures indicative of other classes. While not the traditional directly counterfactual analysis, ProtGNN provides model-level insight.   
+
+\quad Experts in the field seem to agree that a class-conditional graph-generating distribution would help illuminate the black-box nature of GNNs. However, there is no consensus on the ideal form or likelihood of such a distribution. While diffusion has proven to be a strong generative method in other applications, D4Explainer’s feature restriction and convoluted sampling algorithm leave much to be desired. The results from GNNInterpreter suggest that conditional denoising might be superior. Specifically, optimizing for prediction accuracy tends to produce better intervals, with GNNInterpreter achieving 1.0 (see @fig-GNNInt-pred-results) compared to D4Explainer's 0.832 on the MUTAG dataset. Explicit prototype-based models are fairly uncommon in the literature, but we believe most researchers would agree that @fig-prot-diagram provides very clear inference. On the other hand, completely refactoring the predictive model is not always feasible, so both explainable and interpretable GNN methods remain important research avenues.
+
 # Technical Details 
 
 ## Methodology
 
+\quad Since GNNInterpreter only makes qualitative assessments of generated structures, we applied the metrics describe in D4Explainer to quantify the properties of the generating distribution. We reimplemented GNNInterpreter using an identical generation scheme and loss function. We trained the reimplemented model on the MUTAG [@Debnath_1991], a standard benchmark graph classification dataset. MUTAG consists of nitroaromatic compounds, with the goal being to predict their mutagenicity on Salmonella typhimurium. Each observation is a graphs representing a chemical structure, where vertices denote atoms and edges represent bonds. For our explainee model, we also implemented a 3-layer GCN model. There are slight variations between the architectures and training hyperparameters, but the accuracies are comparable, 86% (ours) and 92% (theirs). We additionally reimplement D4Explainer's counterfactual generator. Although not discussed in the original paper, this model can also be used to produce model level explanations. We simply randomly sample a graph from the opposite class and take the generated counter factual graph as our explanation.   
+
 ## Results
+
+\begin{longtable}[t]{llllll}
+\caption{Comparison of Original and Reimplement Model Results.} \label{tab-results} \\
+\toprule
+  & Predictions & Density & Deg. & Clus. & Spec.\\
+\midrule
+\addlinespace[0.3em]
+\multicolumn{6}{l}{\textbf{GNNInterpreter Original}\textsuperscript{2}}\\
+\hspace{1em}Class 0 & 1.0 +/- 0.0 & NA & NA & NA & NA\\
+\hspace{1em}Class 1 & 1.0 +/- 0.0 & NA & NA & NA & NA\\
+\addlinespace[0.3em]
+\multicolumn{6}{l}{\textbf{GNNInterpreter Reimplemented}}\\
+\hspace{1em}Class 0 & 0.93 +/- 0.01 & 0.38 +/- 0.002 & 1.77 & 1.53 & 0.07\\
+\hspace{1em}Class 1 & 0.98 +/- 0.01 & 0.32 +/- 0.003 & 1.41 & 1.43 & 0.04\\
+\addlinespace[0.3em]
+\multicolumn{6}{l}{\textbf{D4Explainer Original}}\\
+\hspace{1em}Aggregated & 0.92\textsuperscript{2} & 0.315\textsuperscript{2} & 0.12\textsuperscript{3} & 0.00\textsuperscript{3} & 0.02\textsuperscript{3}\\
+\addlinespace[0.3em]
+\multicolumn{6}{l}{\textbf{D4Explainer Reimplemented}}\\
+\hspace{1em}Class 0 & 0.63 +/- 0.23 & 0.13 +/- 0.03 & 0.27 & 0.57 & 0.05\\
+\hspace{1em}Class 1 & 0.66 +/- 0.20 & 0.13 +/- 0.03 & 0.08 & 0.25 & 0.04\\
+\bottomrule
+\multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{1} +/- 1 standard deviation; 1,000 sample graphs.}\\
+\multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{2} From Table 2 in Wang and Shen (\protect\hyperlink{ref-Wang_Shen_2024}{2024}).}\\
+\multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{2} From Table 3 in Chen et al.
+(\protect\hyperlink{ref-Chen_Wu_Gupta_Ying_2023}{2023}).}\\
+\multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{2} From Table 2 in Chen et al.
+(\protect\hyperlink{ref-Chen_Wu_Gupta_Ying_2023}{2023}).}\\
+\end{longtable}
+
+![(a) Observed graph from class 0, Pr = 0.92; (b) Generated counterfactual explanation of (a) from D4Explainer reimplemented, Pr = 0.67; (c) Observed graph from class 1, Pr = 0.96; (d) Generated counterfactual explanation of (b) from D4Explainer reimplemented, Pr = 0.96; (e) Generated explanation for class 0 from GNNInterpreter reimplemented, Pr = 0.94; (f) Generated explanation for class 1 from GNNInterpreter reimplemented, Pr = 1.0; (g) Generated explanation for class 0 from GNNInterpreter (@Wang_Shen_2024, Figure 1, pg.7), Pr = 1.0; (h) Generated explanation for class 1 from GNNInterpreter (@Wang_Shen_2024, Figure 1, pg.7), Pr = 1.0.](figures/mutag_plot_together.png){fig-align="center" height="100%" width="100%" #fig-results}
+
+\quad We were unable to replicate GNNInterpreter's 0 variance predictive accuracy, but the values are comparable given the lack of extensive hyperparameter tuning (see Table \ref{tab-results}). The predictions are similarity superior to the original D4Explainer results, 0.93 and 0.98 v. 0.92. As noted by the authors, the explainee model has a bias towards the mutagenic class (class 1), which can explain the greater deviation between the class 0 models. Another limiting factor is a lower set maximum number of nodes. We set it to 8 to make the results more comparable to the model-level explanation reported by D4Explainer. Surprisingly, D4Explainer produces sparser graphs than GNNInterpreter in terms of average density, 0.38 and 0.32 v. 0.315. This is despite the fact that D4Explainer has no explicit penalty in the loss function. Based on the MMD statistics, D4Explainer produces graphs with better in-distribution properties (see \ref{tab-results}). This might be due to the explicit regularization in GNNInterpreter, as penalizing the edge probabilities could lead to a different degree distribution. Additionally, the clustering coefficient might be affected, since fewer edges result in fewer triangle clusters. The spectrum distributions are similar for both models, as both enforce similarity in the explainee embedding space, which aligns with the nature of the spectrum distribution. However, one could argue that having a similar degree distribution and clustering coefficient may not always be desirable. For larger or more densely connected graphs, lower MMD statistics might result in explanations that are too complex to be useful.  
+
+\quad Similar to the original examples display in GNNInterpreter, the generated non-mutagenic graphs do not have clear or realistic structures (see @fig-results). Graph (f) highlights that nitrogen in key. We believe that this result is consistent with the original findings about the N02 groups, but because of the more restrictive node limit, our reproduction focuses on nitrogen since multiple oxygens can be found in non-mutagenic chemicals. The reimplemented D4Explainer has a CF-ACC in line with the original paper, 76.32% at 0.41 log MR (see @fig-D4-CF-ACC for the original metrics). The reimplemented D4Explainer produces the least dense graphs, but has the least discriminative predictions. The latter makes sense, since the goal of the counterfactual loss is to flip the prediction, not necessarily maximize confidence. One the other hand, this model demonstrates that it is possible to generate sparse graphs with similar degree and clustering distributions. Visually the counterfactual explanation make sense. Graph (b) eliminated the red or chlorine atom which is typically associated with non-mutagenic compounds [@Yuan_Tang_Hu_Ji_2020]. Graph (d) 
+corrupted 3 of the 4 N02 groups, which is in line with GNNInterpreter's findings that multiple N02 groups is a strong indicator of mutagenicity. 
+
+\quad These results point to two main conclusions. First, the generator model should make use of graph level data. GNNInterpreter uses information about the graph structure through the explainee, but never on the raw scale. This lack of graph level information can result in unrealistic distributional properties. One way of including this information would be to use the observed graphs to help predict the distributional parameters. Alternatively, the generator could be replaced with a diffusion model without any modififcation to the loss. Second, the generator model should use class or prediction information. D4Explainer's model-level sampling algorithm is less efficient and less accuracate than GNNInterpreter's direct optimization during training. The modified sampling algorithm demonstrates that single-step denoising can still maintain low MMD statistics. Adding $\mathcal{L}_\text{pred}$ (\ref{l-pred}) and/or $\mathcal{L}_\text{embed}$ (\ref{l-embed}) could further improve this type of sampling. Alternatively, a class label embedding, similar to the time embedding, could be included to establish a conditional diffusion model, which has worked extremely well in other applications. Additionally, it would be easy to explore diffusing the node and edge features as these types of models already exist [@Vignac_Krawczuk_Siraudin_Wang_Cevher_Frossard_2023]. 
 
 ## Proofs {#sec-proof}
 
@@ -328,6 +381,80 @@ here $\text{Gumbel}(0, 1)[i]$ denotes the $i^{th}$ i.i.d. sample from the associ
     Reference: @Huijben_Kool_Paulus_van_Sloun_2022 
 
 # Future Directions
+
+## Graph Edit Distance
+
+\quad GNNInterpreter generates graphs with predictions very close to the target class, but lack good in-distributions properties. D4Explainer, on the other hand, generates explanations with more consistent features distributions, but the predicted probabilities display higher variance. Furthermore, while the model parameters of GNNInterpreter's generator can be interpreted, D4Explainer introduces another black-box model. We propose using a **differentiable approximation to the graph edit distance (GED)** as a way of generically enforcing structural consistency. GED measures the similarity between two graphs by counting the minimum number of edits required to make the graphs isomorphic or subgraph isomorphic. GED is similar to the modification ratio for counterfactual explanations (see Equation \ref{mod-ratio}). Edit distance has the key advantage of being human interpretable. For example, the percentage of atoms and bonds that need to be changed for two molecules to match is more relatable than the cosine distance between their embeddings. Finding the exact optimal GED is a known NP-complete problem, and most solutions are not differentiable [@Bougleux_Brun_Carletti_Foggia_Gaüzère_Vento_2015]. Fortunately, approximating GED as a quadratic assignment problem (QAP) solves both the time complexity and derivative issue [@wang2024pygm]. 
+
+\quad Let $G_1$ and $G_2$ be graphs we wish to compute the GED between. QAP approximates this be solving the following optimization problem: 
+\begin{equation} \label{QAP-obj}
+    \mathcal{L}_{\text{GED}} = \underset{M}{\max} \ \text{vec}(M) \ K(G_1, G_2) \ \text{vec}(M)^T.
+\end{equation} 
+
+Here $M$ is a $(n_1 \times n_2)$ binary node matching matrix and $K$ is a $(n_1 n_2 \times n_1 n_2)$ quadratic affinity matrix that encode both node and edge similarities. The efficiency of QAP comes from the fact that when any two nodes are matched together, the above objective will account for the possible edges that could connect the nodes. 
+In order for the solution to be interpreted as an edit distance, each entry of $K$ should range from [-1, 0], where -1 signals the need for a complete edit and 0 means no edits are required [@wang2024pygm]. We suggest the following similarity metric for every pair of nodes and edges: 
+\begin{equation}
+    \begin{split}
+         &-\lambda_1 \left[ 1 - \phi(\text{Continuous Features}) \right] \ + \\
+         &-\lambda_2 \left[1 - \phi(\text{Discrete Features}) \right], 
+    \end{split}
+\end{equation} 
+
+where $\phi(.)$ is the normalized cosine distance. $1 - \phi(.)$ will return 2 is the vectors are in opposite directions, 1 if the vectors are orthogonal, and 0 if they are pointing in the same direction; however, one-hot encoded vectors will never be in opposite directions, so the different types of feature must be weighted accordingly. Computing affinity this way allows for $K$ to be differentiable w.r.t. generated graph features. Furthermore we suggest using the reweighted random walks algorithm [@Cho_Lee_Lee_2010] to solve the objective (\ref{QAP-obj}), which will generate an $M$ that is differentiable w.r.t. to $K$.
+
+\quad We conducted a simulation study to compare graph level and latent similarity, or $\mathcal{L}_{\text{GED}}$ (\ref{QAP-obj}) and $\mathcal{L}_{\text{embed}}$ (\ref{l-embed}). We generated 4 clusters of graph data. Every graph had one continuous edge feature sampled from a standard normal, one discrete node and edge feature sampled from a Bernoulli, and an adjacency matrix, also Bernoulli. The only variation between the clusters was the maximum number of nodes as well as the mean of the continuous node feature distribution. Cluster 0 had 75-100 nodes, cluster 1 had 50-75 nodes, and cluster 2 as well as 3 had 10-35 nodes. This was designed to mimic a classic binary graph classification dataset where cluster 0 and 1 are the observed classes and clusters 2 and 3 are generated subgraph explanations. The embedding model was a 3 layer GNN with a neural network type convolution that utilized every feature. During each of the 50 trials, the GNN was trained using 50 samples (each) from only clusters 0 and 1. We then sampled 50 test graphs from each of the 4 cluster and computed 95\% t intervals for GED and embedding cosine distance as percentages of their respective upper bounds. Since $(\mu_0 = -1, \mu_1 = 1, \mu_2 = 0, \mu_3 = -5)$ we would expect an unbiased distance metric to maintain the following relationship:  
+\begin{equation}
+    \text{dist}(1,\ 2) \approx \text{dist}(0, 2) < \text{dist}(0, 1) < \text{dist}(0, 3) < \text{dist}(1, 3), 
+\end{equation} 
+
+based on the distance between cluster means.
+
+\begin{longtable}[t]{lcc}
+\caption{Simulation Results} \label{tab-sim}\\
+\toprule
+  & Cluster 0 & Cluster 1\\
+\midrule
+\addlinespace[0.3em]
+\multicolumn{3}{l}{\textbf{Embeddings}}\\
+\hspace{1em}Within & (0.0008, 0.0015) & (0.0005, 0.0009)\\
+\hspace{1em}Between & (0.5662, 0.6264) & (0.5689, 0.6289)\\
+\hspace{1em}Cluster 2 & (0.2894, 0.3589) & (0.1282, 0.209)\\
+\hspace{1em}Cluster 3 & (0.018, 0.0253) & (0.6521, 0.7097)\\
+\addlinespace[0.3em]
+\multicolumn{3}{l}{\textbf{GED}}\\
+\hspace{1em}Within & (0.4147, 0.419) & (0.462, 0.4674)\\
+\hspace{1em}Between & (0.6589, 0.6639) & (0.6586, 0.6646)\\
+\hspace{1em}Cluster 2 & (0.7843, 0.7947) & (0.7571, 0.7715)\\
+\hspace{1em}Cluster 3 & (0.6164, 0.6286) & (0.8256, 0.8352)\\
+\bottomrule
+\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{1} Node Means: $\mu_0 = -1$, $\mu_1 = 1$, $\mu_{out1} = 0$, 
+                    $\mu_{out2}$ = -5.}\\
+\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{2} 95\% t intervals on \% difference.}\\
+\end{longtable}
+
+\begin{equation} \label{eq-sim}
+    \begin{split}
+        \text{Expected: } &\text{dist}(1,\ 2) \approx \text{dist}(0, 2) < \text{dist}(0, 1) < \\ 
+        &\text{dist}(0, 3) < \text{dist}(1, 3) \\ 
+        \text{GED: }&(0.75, 0.77) \textcolor{green}{\approx} (0.78, 0.79) 
+                    \textcolor{red}{>} (0.65, 0.66) \textcolor{red}{>} \\
+                    &(0.61, 0.62) \textcolor{green}{<} (0.82, 0.83) \\
+        \text{Embedding: }&(0.12, 0.20) \textcolor{red}{<} (0.28, 0.35) 
+                    \textcolor{green}{<} (0.56, 0.62) \textcolor{red}{>>} \\
+                    &(0.018, 0.0253) \textcolor{green}{<} (0.65, 0.7)
+        \end{split}
+\end{equation}
+
+\quad The most worrisome bias arises between the distances from cluster 0 to 1 and from cluster 0 to 3 (see Table \ref{tab-sim}). Despite cluster 0's mean being twice as close to cluster 1, the embedding distance indicates that cluster 0 is (53, 60) percentage points farther away from cluster 1. Although GED also displayed this bias, it was considerably less pronounced, registering at (1, 5) percentage points. This implies that a generator initialized with a mean of -5 would produce samples with embeddings confidently assigning them to cluster 0, despite having a feature distribution far from the truth. Relying solely on embedding distance for training also increases the likelihood of the generator becoming trapped in a misleading local optimum due to the substantial bias. Although GED exhibits a statistically significant bias, its magnitude is considerably smaller, making it less likely to disrupt training. Another troubling bias observed is that the embedding distance between clusters 1 and 2 is approximately 10 percentage points less than the embedding distance between clusters 0 and 2, even though the mean of cluster 2 is equidistant from the means of clusters 1 and 0. This could stem from cluster 1 having fewer nodes making samples more similar in terms of size to cluster 2. However, since researcher typically cap the size of examples for interpretability, an objective with a degree bias could be problematic. On the contrary, GED introduces a bias absent in the embedding space. The edit distance between clusters 0 and 2 is actually greater than the distance between clusters 0 and 1. While biased concerning mean locations, this direction is aligned with the maximum node size. Despite this, the differing directions of the biases of GED and embedding distance imply that they capture unique structural nuances, potentially complementing each other.
+
+## Graph Protypes
+
+\quad ProtGNN's prototype projections are computationally expensive and cannot produce out-of-sample insights. These two issue can be resolve by using graph protypes as opposed to vectors. Define each prototype to be a graph,   
+\begin{equation}
+    p_k = (X_{p_k}, A_{p_k}, \ E_{p_k})
+\end{equation}   
+
+$f(G; \ \Omega_f) = \hat p_G$ would need to be replace with an architeture similar to the denoising model in D4Explainer, that can output graph matrices. The model can be trained using graph level similarity via GED and/or the original loss terms of ProtGNN applied to the prototypes embeddings. Using graph prototypes eliminates the computational bottleneck posed by the MCTS projection step. Furthermore, since $X_{p_k}, A_{p_k}, \ E_{p_k}$ are free trainable parameters, they could contain structure not observed in the original dataset. We expect sample size to be a limiting factor. Although ProtGNN uses fairly high-dimensional vectors for its prototypes, graph prototypes might still introduce exponentially more parameters. The size and sparsity of the graph prototypes could be enforced, but this would introduce additional hyperparameters. If the dataset is extremely large, then the additional parameters should be manageable.
 
 \pagebreak 
 
