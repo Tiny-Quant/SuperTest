@@ -184,7 +184,7 @@ Neural Networks}
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[breakable, enhanced, borderline west={3pt}{0pt}{shadecolor}, boxrule=0pt, sharp corners, frame hidden, interior hidden]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[borderline west={3pt}{0pt}{shadecolor}, enhanced, boxrule=0pt, breakable, interior hidden, sharp corners, frame hidden]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -1035,6 +1035,7 @@ factual graph as our explanation.
 (\protect\hyperlink{ref-Chen_Wu_Gupta_Ying_2023}{2023}).}\\
 \multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{2} From Table 2 in Chen et al.
 (\protect\hyperlink{ref-Chen_Wu_Gupta_Ying_2023}{2023}).}\\
+\multicolumn{6}{l}{\rule{0pt}{1em}\textsuperscript{*} The code that produced these values can be found \href{https://github.com/Tiny-Quant/SuperTest/blob/master/coding/technical-details/main-notebook.ipynb}{here}.}\\
 \end{longtable}
 
 \begin{figure}
@@ -1054,7 +1055,8 @@ explanation for class 0 from GNNInterpreter (X. Wang and Shen
 (\protect\hyperlink{ref-Wang_Shen_2024}{2024}), Figure 1, pg.7), Pr =
 1.0; (h) Generated explanation for class 1 from GNNInterpreter (X. Wang
 and Shen (\protect\hyperlink{ref-Wang_Shen_2024}{2024}), Figure 1,
-pg.7), Pr = 1.0.}
+pg.7), Pr = 1.0. The code that produced these figures can be found
+\href{https://github.com/Tiny-Quant/SuperTest/blob/master/coding/technical-details/main-notebook.ipynb}{here}.}
 
 \end{figure}
 
@@ -1381,6 +1383,7 @@ based on the distance between cluster means.
 \multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{1} Node Means: $\mu_0 = -1$, $\mu_1 = 1$, $\mu_{out1} = 0$, 
                     $\mu_{out2}$ = -5.}\\
 \multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{2} 95\% t intervals on \% difference.}\\
+\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{*} The code for these simulation results can be found \href{https://github.com/Tiny-Quant/GNN-EGG/blob/pre-release/notebooks/CS-8321-Final-Paper-Code.ipynb}{here}.}\\
 \end{longtable}
 
 \begin{equation} \label{eq-sim}
@@ -1445,9 +1448,9 @@ where \(G_1 \dots G_\text{mC}\) are the subgraphs induced by the
 predicted masks. Figure~\ref{fig-graph-prot_diag} depicts the general
 flow of such a network. Using graph prototypes also eliminates the
 computational bottleneck posed by the MCTS projection step. Furthermore,
-since \(X_{p_k}, A_{p_k}, \ E_{p_k}\) are free trainable parameters,
-they could contain structure not observed in the original dataset. We
-expect sample size to be a limiting factor. Although ProtGNN uses fairly
+since \(X_{p_k}, A_{p_k}, E_{p_k}\) are free trainable parameters, they
+could contain structure not observed in the original dataset. We expect
+sample size to be a limiting factor. Although ProtGNN uses fairly
 high-dimensional vectors for its prototypes, graph prototypes might
 still introduce exponentially more parameters. The size and sparsity of
 the graph prototypes could be enforced, but this would introduce
