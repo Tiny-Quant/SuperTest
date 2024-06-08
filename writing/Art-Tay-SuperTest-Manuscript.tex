@@ -184,7 +184,7 @@ Neural Networks}
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[enhanced, boxrule=0pt, interior hidden, sharp corners, frame hidden, breakable, borderline west={3pt}{0pt}{shadecolor}]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[boxrule=0pt, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, breakable, sharp corners]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -1465,7 +1465,9 @@ high-dimensional vectors for its prototypes, graph prototypes might
 still introduce exponentially more parameters. The size and sparsity of
 the graph prototypes could be enforced, but this would introduce
 additional hyperparameters. If the dataset is extremely large, then the
-additional parameters should be manageable.
+additional parameters should be manageable. Another potential solution
+is to define the prototypes as the parameters of a graph distribution,
+rather than assigning each entry its own parameter.
 
 \begin{figure}
 
