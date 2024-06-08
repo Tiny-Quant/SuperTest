@@ -184,7 +184,7 @@ Neural Networks}
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[borderline west={3pt}{0pt}{shadecolor}, frame hidden, sharp corners, breakable, enhanced, boxrule=0pt, interior hidden]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[enhanced, boxrule=0pt, interior hidden, sharp corners, frame hidden, breakable, borderline west={3pt}{0pt}{shadecolor}]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -401,11 +401,7 @@ where \(\theta_A\) is an \(n \times n\) matrix with each \([i, j]\)
 entry representing the relative probability that the \(ij\) edge exists.
 Equation \ref{binary-concrete} samples from the \emph{binary concrete
 distribution} (\protect\hyperlink{ref-Maddison_Mnih_Teh_2017}{Maddison,
-Mnih, and Teh 2017}). Taken together, let\\
-\[
-    G_{\text{gen}} \sim \text{gen}(\Theta)  
-\]
-
+Mnih, and Teh 2017}). Let \(G_{\text{gen}} \sim \text{gen}(\Theta)\)
 notate the combined graph generating distribution, where \(\Theta\) is
 the set of all parameters.
 
@@ -413,7 +409,7 @@ the set of all parameters.
 \emph{explainee} model predicts a sampled graph to be a member of the
 target class. Let \(\tilde{\rho}\) denote the desired prediction. Then
 the above objective can be expressed as: \begin{equation} \label{l-pred}
-    \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CrsEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
+    \mathcal{L}_\text{pred} (\Theta \ | \ G_\text{gen}) = \text{CrsEnt} (\text{explainee}(G_\text{gen}), \ \tilde{\rho})
 \end{equation}
 
 While the above objective enforces a desirable property, it fails to be
@@ -448,7 +444,7 @@ additionally minimizing the cosine distance between the average
 embedding of all the observed graphs from the targeted class,
 \(\bar h^{(L)}_{G_c}\), and the embedding of the generated explanation:
 \begin{equation} \label{l-embed}
-    \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = \mathams{E}_{G_\text{gen}} \ \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
+    \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
 \end{equation}
 
 Additionally, the author wanted to encourage sparsity for ease of
@@ -471,13 +467,11 @@ where \(\mathcal{E}(i)\) is the set of edges that connect to node \(i\).
 \quad The final generator model is trained by sampling
 \(G_\text{gen} \sim \text{gen}(\Theta)\) and then iteratively updating
 \(\Theta\) via gradient descent on the full loss: \begin{equation}
-    \begin{split}
-        \mathcal{L}_{\text{GNNInterpreter}}(\Theta \ | \ G_\text{gen}) = 
-        &\lambda_1 \mathcal{L}_{\text{pred}}(\Theta \ | \ G_\text{gen}) + 
-        \lambda_2 \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) +  \\
-        &\lambda_3 \mathcal{L}_{\text{spars}}(\Theta \ | \ G_\text{gen}) +
-        \lambda_4 \mathcal{L}_{\text{conn}}(\Theta \ | \ G_\text{gen}) 
-    \end{split}
+    \mathcal{L}_{\text{GNNInterpreter}}(\Theta \ | \ G_\text{gen}) = 
+    \lambda_1 \mathcal{L}_{\text{pred}} + 
+    \lambda_2 \mathcal{L}_{\text{embed}} + 
+    \lambda_3 \mathcal{L}_{\text{spars}} +
+    \lambda_4 \mathcal{L}_{\text{conn}} 
 \end{equation}
 
 GNNInterpreter achieves remarkable accuracy on most target classes, with
@@ -592,7 +586,7 @@ above diffusion process is provide in Section~\ref{sec-proof}.
 still wanted to use all of the available information during the
 \emph{backwards diffusion} process. Thus the denoising model was
 parameterized as: \begin{equation}
-        p(\hat A_0 \ | \ A_t, t, X_0, E_0; \ \Omega)  
+    \hat A_0 \sim p(X, A_0, E, t; \ \Omega)
 \end{equation}
 
 where \(\Omega\) is the set of trainable parameters. The authors
@@ -605,23 +599,20 @@ between the predicted denoised observation and the original. The authors
 have added an additional weight term to focus the model on noisier or
 more difficult training examples. The core loss function is expressed
 as: \begin{equation} \label{L-dist}
-    \mathcal{L}_{dist} (\Omega \ | \ A_0) = \mathams{E}_{\hat A_0} \ \sum_{t=1}^T \left(1 - 2 \bar \beta_t + \dfrac 1 T \right) \text{CrsEnt} \left(A_0, \hat A_0 \right), 
+    \mathcal{L}_{dist} (\Omega \ | \ A_0, t, \hat A_0) = \sum_{t=1}^T \left(1 - 2 \bar \beta_t + \dfrac 1 T \right) \text{CrsEnt} \left(A_0, \hat A_0 \right), 
 \end{equation}
 
-where \(\hat A_0 = p(\hat A_0 \ | \ A_t, t, X_0, E_0; \ \hat \Omega)\),
-\(A_t[i, j] \sim q(A_t[i, \ j] \ | \ A_{0}[i, \ j])\), and \[
-    \bar \beta_t = \frac 1 2 - \frac 1 2 \prod^t_{i=1}(1-2\beta_i), 
-\]
-
-the cumulative transition probability. After the denoising model has
-been trained, model-level explanations are produced by iterative
-sampling candidate adjacency structures for an observed set of graph
-features and selecting the candidate with the highest probability of
-being from the targeted class. This is a multi-step procedures, where at
-each step \(A_t\) is denoised to \(k\) candidates
-\(\hat A_{0, 1 \dots k}\). The candidate with the best predicted
-probability is then noised to a level of \(t-1\) and the process is
-repeated. The pseudocode is reproduced below.
+where
+\(\bar \beta_t = \frac 1 2 - \frac 1 2 \prod^t_{i=1}(1-2\beta_i)\), the
+cumulative transition probability. After the denoising model has been
+trained, model-level explanations are produced by iterative sampling
+candidate adjacency structures for an observed set of graph features and
+selecting the candidate with the highest probability of being from the
+targeted class. This is a multi-step procedures, where at each step
+\(A_t\) is denoised to \(k\) candidates \(\hat A_{0, 1 \dots k}\). The
+candidate with the best predicted probability is then noised to a level
+of \(t-1\) and the process is repeated. The pseudocode is reproduced
+below.
 
 \begin{algorithm}
 \caption{D4Explainer Model-level Explanation Reverse Sampling Algorithm}\label{alg:cap}
@@ -638,13 +629,13 @@ repeated. The pseudocode is reproduced below.
     \State Sample $A_T[1:n, 1:n]$ \sim Bernoulli(0.5)
     \For{t in T to 1}
         \State Sample candidates 
-            $\{\hat A_{0, k} \sim p(A_t,t, X, E; \ \hat \Omega) : k \in 1, \dots, K\}$
+            $\{\hat A_{0, k} \sim p(X, A_0, E, t; \ \hat \Omega) : k \in 1 \dots K\}$
         \State Select the best candidate 
-        $\underset{j \ \in \ 1, \dots K}{\text{argmin}}$ 
+        $\underset{j \ \in \ 1 \dots K}{\text{argmin}}$ 
         CrsEnt(explainee($G = (X, \hat A_{0, j}, E)), \ \tilde{\rho}$)
         \State Sample $A_{t-1}[1:n, 1:n] \sim q(A_{t-1}, \hat A_{0, j})$
     \EndFor
-    \State \Return $\hat A_0$
+    \State \Return $\hat A_{0, j}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -685,7 +676,7 @@ particular observed graph to be \(G^c\) such that
 distribution, and adding \(\mathcal{L}_{CF}\) minimize the probability
 that the generated graph is classified the same as the input.
 \begin{equation}
-        \mathcal{L}_{CF}(\Omega \ | \ A_0) = \mathams{E}_{\hat A_0} \ - \log(1 - \rho_{G^c}[\hat Y_{G}]), 
+        \mathcal{L}_{CF}(\Omega \ | \ G, G^c) = \mathams{E}_{\hat A_0} \ - \log(1 - \rho_{G^c}[\hat Y_{G}]), 
 \end{equation}
 
 where \(G = (X, A_0, E)\) is an observed graph,
@@ -695,18 +686,18 @@ the quality of generated counterfactual explanations, the author report
 \emph{Counterfactual Accuracy}, \emph{Fidelity}, and \emph{modification
 ratio}. CF-ACC measure the proportion of \(G^c\)s that have different
 predicted labels than there associated observed graph: \begin{equation}
-        \text{CF-ACC} = \mathams{E}_{\hat A_0} \ I(\hat Y_{G^c} \neq \hat Y_{G}).
+        \text{CF-ACC}(G, G^c) = I(\hat Y_{G^c} \neq \hat Y_{G}).
 \end{equation}
 
 Fidelity measures the difference in the predicted probability of \(G\)
 and \(G^c\) with respected to the original class label: \begin{equation}
-    \text{Fidelity} = \mathams{E}_{\hat A_0} \ \rho_{G}[\hat Y_G] - \rho_{G^c}[\hat Y_G].
+    \text{Fidelity}(G, G^c) = \rho_{G}[\hat Y_G] - \rho_{G^c}[\hat Y_G].
 \end{equation}
 
 Finally, modification ratio measures difference in edges between \(G^c\)
 and \(G\) relative to the size of the original graph:
 \begin{equation} \label{mod-ratio}
-    \text{MR} = \mathams{E}_{\hat A_0} \ \dfrac{|\sum_{i, j} A[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A[i, j]}. 
+    \text{MR}(A_0, \hat A_0) = \dfrac{\sum_{i, j} |A_0[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A_0[i, j]}. 
 \end{equation}
 
 \quad Similar to GNNInterpreter, the authors report the mean predicted
