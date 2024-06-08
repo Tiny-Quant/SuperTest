@@ -1,3 +1,8 @@
+
+# All code copied from: 
+# - https://github.com/Graph-and-Geometric-Learning/D4Explainer/blob/main/utils/dist_helper.py
+# - https://github.com/Graph-and-Geometric-Learning/D4Explainer/blob/main/evaluation/in_distribution/ood_stat.py
+
 import concurrent.futures
 from functools import partial
 
