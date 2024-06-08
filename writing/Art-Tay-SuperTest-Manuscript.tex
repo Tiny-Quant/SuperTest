@@ -184,7 +184,7 @@ Neural Networks}
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[boxrule=0pt, interior hidden, borderline west={3pt}{0pt}{shadecolor}, enhanced, frame hidden, breakable, sharp corners]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, breakable, boxrule=0pt, borderline west={3pt}{0pt}{shadecolor}, enhanced, sharp corners, frame hidden]}{\end{tcolorbox}}\fi
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -275,7 +275,7 @@ misunderstandings within the model.
 \item
   Let \(n\) represent the number of nodes in a graph.
 \item
-  For any graph, let \(\nu\) denote the set of node and \(\mathcal{E}\)
+  For any graph, let \(\nu\) denote the set of nodes and \(\mathcal{E}\)
   denote the set of edges.
 \item
   \(A\) is a binary \(n \times n\) matrix, where \(A[i, \ j] = 1\)
@@ -284,12 +284,12 @@ misunderstandings within the model.
   Let
   \(\text{explainee}(G; \ \Omega) = h^{(1)}_G, \dots h^{(L)}_G, \rho_G\)
   be an \(L\) layer GNN model with parameters \(\Omega\) that we would
-  like to explain. Here \(h^{(l)}_G\) denotes the graph embeddings
-  outputted by the \(l^th\) layer, and \(\rho_G\) denotes the final
+  like to explain. Here \(h^{(l)}_G\) denotes the graph embedding
+  outputted by the \(l^{th}\) layer, and \(\rho_G\) denotes the final
   prediction vector.
 \item
   Let \(\text{argmax} \ \rho_G = \hat Y_G\) be the predicted class label
-  for graph \(G\) predicted from explainee().
+  for graph \(G\) predicted by explainee().
 \item
   Unless otherwise noted, assume any GNN model discussed is a
   graph-level classification model.
@@ -331,7 +331,7 @@ authors tackle these issues by making two simplify assumptions. First,
 they assume that every graph is a \emph{Gilbert random graph}
 (\protect\hyperlink{ref-Gilbert_1959}{Gilbert 1959}), where every
 possible edge as an independent fixed probability of occurring. Second,
-the author assume that the features of every node and edge are
+the authors assume that the features of every node and edge are
 independently distributed. The justification of the first assumption is
 that the other common types of random graphs are not suitable for this
 application. Erdo-Renyi random graphs
@@ -355,7 +355,7 @@ gradient based optimization. It is commonly known as the
 \emph{reparametrization trick}. The discrete feature matrices, (\(X_d\),
 \(E_d\), \(A\)), need to be sampled from a continuous distribution for
 gradient based optimization, but the distribution has to have sampling
-properties close to a discrete distribution. The author assume that the
+properties close to a discrete distribution. The authors assume that the
 true underlying distribution for every discrete node and edge feature is
 \emph{categorical}. The categorical distribution is also know as the
 multi-bernoulli, where every sample has a fixed probability of being in
@@ -375,11 +375,10 @@ some probability of having the maximum noised logit. A proof of equation
 \ref{gumbel-max-eq} is provide in section Section~\ref{sec-proof}.
 Approximating the argmax function with the Softmax function allows for
 approximate categorical sampling that is differentiable w.r.t.
-\(\theta_\text{cat}\). The associate inverse uniform CDF sampling
-formula below is referred to as the \emph{Gumbel-Softmax trick} or the
-\emph{concrete distribution}
-(\protect\hyperlink{ref-Maddison_Mnih_Teh_2017}{Maddison, Mnih, and Teh
-2017}),\\
+\(\theta_\text{cat}\). The associate inverse CDF sampling formula below
+is referred to as the \emph{Gumbel-Softmax trick} or the \emph{concrete
+distribution} (\protect\hyperlink{ref-Maddison_Mnih_Teh_2017}{Maddison,
+Mnih, and Teh 2017}),\\
 \begin{equation}
     \text{Softmax}
     \left(
@@ -388,7 +387,7 @@ formula below is referred to as the \emph{Gumbel-Softmax trick} or the
 \end{equation}
 
 \(\tau\) is a hyperparameter that controls the degree of relaxation.
-Smaller value of \(\tau\) approximate the discrete sampling better, but
+Smaller values of \(\tau\) approximate the discrete sampling better, but
 can result in numerical issues. The adjacency matrix can be sampled in a
 similar manner since the Bernoulli is just a special case of the
 categorical. The sampling formula is as follows:\\
@@ -401,11 +400,11 @@ where \(\theta_A\) is an \(n \times n\) matrix with each \([i, j]\)
 entry representing the relative probability that the \(ij\) edge exists.
 Equation \ref{binary-concrete} samples from the \emph{binary concrete
 distribution} (\protect\hyperlink{ref-Maddison_Mnih_Teh_2017}{Maddison,
-Mnih, and Teh 2017}). Let \(G_{\text{gen}} \sim \text{gen}(\Theta)\)
-notate the combined graph generating distribution, where \(\Theta\) is
-the set of all parameters.
+Mnih, and Teh 2017}).
 
-\quad An obvious objective is to maximize the likelihood that the
+\quad Let \(G_{\text{gen}} \sim \text{gen}(\Theta)\) notate the combined
+graph generating distribution, where \(\Theta\) is the set of all
+parameters. An obvious objective is to maximize the likelihood that the
 \emph{explainee} model predicts a sampled graph to be a member of the
 target class. Let \(\tilde{\rho}\) denote the desired prediction. Then
 the above objective can be expressed as: \begin{equation} \label{l-pred}
@@ -417,13 +416,14 @@ restrictive enough to generate realistic graphs. This is because the
 final prediction, \(\rho_{G_{\text{gen}}}\) is compute using only final
 embeddings, \(h^{(L)}_{G_{\text{gen}}}\). Normally
 \(h^{(L)}_{G_{\text{gen}}}\) contains all the needed information from
-the graphs structure; however, the generation scheme allows the feature
+the graph's structure; however, the generation scheme allows the feature
 distributions to be optimized directly. This means that an explanation
-can ignore the graph structure and optimize towards the desired final
-embeddings. It is dangerously common for nonsensical features and
-structures at the graph level to end up on the desired side of the
-decision boundary. Empirically, the authors found that even completely
-random graphs can produce confidence and consistent predictions.
+can ignore the structure of the graph and optimize directly towards the
+desired final embeddings. It is dangerously common for nonsensical
+features and structures at the graph level to end up on the desired side
+of the decision boundary. Empirically, the authors found that even
+completely random graphs can produce confident and consistent
+predictions.
 
 \begin{figure}
 
@@ -447,7 +447,7 @@ embedding of all the observed graphs from the targeted class,
     \mathcal{L}_{\text{embed}}(\Theta \ | \ G_\text{gen}) = \text{CosDist}\left( \bar h^{(L)}_{G_c}, \ h^{(L)}_{G_\text{gen}} \right). 
 \end{equation}
 
-Additionally, the author wanted to encourage sparsity for ease of
+Additionally, the authors wanted to encourage sparsity for ease of
 interpretation. This was done by employing an \(L_1\), \(L_2\), and a
 budget penalty on the edge probabilities:\\
 \begin{equation} \label{l-spars}
@@ -456,9 +456,9 @@ budget penalty on the edge probabilities:\\
 
 where \(B\) is the expected maximum number of edges for generated
 explanation graphs. Connectivity is another desirable property as it
-ensures cohesive explanations. To encourage connectivity the author
-minimize the \emph{KL-Divergence} between edge probabilities that share
-a common node. \begin{equation}
+ensures cohesive explanations. To encourage connectivity the authors
+minimized the \emph{KL-Divergence} between edge probabilities that
+shared a common node: \begin{equation}
     \mathcal{L}_{\text{conn}}(\theta_A) = \sum_{i \in \nu} \sum_{j, k \in \mathcal{E}(i)} D_{KL}(\text{sigmoid}(\theta_A[i, \ j]) \ || \ \text{sigmoid}(\theta_A[i, \ k])), 
 \end{equation}
 
@@ -534,7 +534,7 @@ et al. 2023}), or in-\textbf{D}istribution GNN Explanations via
 \textbf{D}iscrete \textbf{D}enoising \textbf{D}iffusion, directly
 addresses the realism of generated graphs in model-level explanations by
 using a diffusion based generator model. In the image domain, diffusion
-models have proven to produce more realistic images than other
+models have been proven to produce more realistic images than other
 generative AI methods, such as Generative Adversarial Networks (GANs).
 These models work by iteratively adding noise to an observation until it
 becomes pure noise. A denoising model is then trained to predict the
@@ -545,11 +545,11 @@ desired class label, can be added to the loss function to generate
 samples with certain properties.
 
 \quad The authors here are focused on \emph{discrete structural
-diffusion}. D4Explainer generate example graph by noising and denoising
+diffusion}. D4Explainer generate example graphs by noising and denoising
 the adjacency matrices of observed graphs. The sampled graphs have the
 same features, but different structures. The process of gradually adding
 noise to the input data is called \emph{forward diffusion}. Let
-\(t \in [0, T]\) denote the current iteration. Let \(\beta_t\) be the
+\(t \in [1, T]\) denote the current iteration. Let \(\beta_t\) be the
 common probability that any edge changes state at time step \(t\).
 \((\beta_1, \dots, \beta_T)\) is known as the variance schedule and is a
 set hyperparameter. Let \(A_t\) be a one-hot encoded version of the
@@ -576,7 +576,7 @@ Q_t =
 \]
 
 the \(t^{th}\) element-wise transition matrix. The data need to approach
-pure noise during the final iteration. This ensures that the denoising
+pure noise during the final iterations. This ensures that the denoising
 model can start with pure noise. In the context of this problem, a
 completely uninformative adjacency would be a Gilbert random graph where
 the probability of any edge is 0.5. A proof of this property for the
@@ -608,8 +608,8 @@ cumulative transition probability. After the denoising model has been
 trained, model-level explanations are produced by iterative sampling
 candidate adjacency structures for an observed set of graph features and
 selecting the candidate with the highest probability of being from the
-targeted class. This is a multi-step procedures, where at each step
-\(A_t\) is denoised to \(k\) candidates \(\hat A_{0, 1 \dots k}\). The
+targeted class. This is a multi-step procedure, where at each step
+\(A_t\) is denoised to \(K\) candidates \(\hat A_{0, 1 \dots K}\). The
 candidate with the best predicted probability is then noised to a level
 of \(t-1\) and the process is repeated. The pseudocode is reproduced
 below.
@@ -650,23 +650,23 @@ chosen kernel is \emph{characteristic}, an MMD statistics defined as the
 representative of the distance between the true distributions
 (\protect\hyperlink{ref-Gretton_Borgwardt_Rasch_Schuxf6lkopf_Smola_2012}{Gretton
 et al. 2012}). The \emph{Gaussian Earth Mover's Distance kernel} was
-selected here. The authors use MMD statistics to compare the degree,
-clustering, and spectrum distributions of the generated explanation
+selected here. The authors used MMD statistics to compare the degree,
+clustering, and spectrum distributions of the generated explanations
 against the observed data. The degree distribution of a graph indicates
-how frequently nodes have different numbers of connections, reflecting
+how frequently nodes have differing counts of connections, reflecting
 the overall connectivity pattern. The clustering coefficient of a node
 measures the proportion of the node's neighbors that are also connected
 to each other, representing local clustering. The spectrum distribution,
 which is the distribution of the eigenvalues of the adjacency matrix or
 the Laplacian matrix, provides insights into the graph's structural
 characteristics and dynamic properties. Similar to GNNInterpreter, the
-author of D4Explainer also value the sparsity of their generate
-examples. They measure the density of a graph as the number of present
+authors of D4Explainer also value the sparsity of their generated
+examples. They measured the density of a graph as the number of present
 edges divided by the number of possible edges or \begin{equation}
     \text{Density} = \mathcal{|E|} / |\nu|^2. 
 \end{equation}
 
-\quad In additional to model-level explanations, D4Explainer can provide
+\quad In addition to model-level explanations, D4Explainer can provide
 \emph{counterfactual explanations} by adding a term to the loss
 function. The authors define a counterfactual explanation for a
 particular observed graph to be \(G^c\) such that
@@ -676,15 +676,15 @@ particular observed graph to be \(G^c\) such that
 distribution, and adding \(\mathcal{L}_{CF}\) minimize the probability
 that the generated graph is classified the same as the input.
 \begin{equation}
-        \mathcal{L}_{CF}(\Omega \ | \ G, G^c) = \mathams{E}_{\hat A_0} \ - \log(1 - \rho_{G^c}[\hat Y_{G}]), 
+        \mathcal{L}_{CF}(\Omega \ | \ G, G^c) = - \log(1 - \rho_{G^c}[\hat Y_{G}]), 
 \end{equation}
 
 where \(G = (X, A_0, E)\) is an observed graph,
 \(G^c = (X, \hat A_0, E)\), and \(\rho_{G^c}[\hat Y_{G}]\) denote the
 probability that \(G^c\) belongs to the same class as \(G\). To quantify
-the quality of generated counterfactual explanations, the author report
-\emph{Counterfactual Accuracy}, \emph{Fidelity}, and \emph{modification
-ratio}. CF-ACC measure the proportion of \(G^c\)s that have different
+the quality of generated counterfactual explanations, the authors report
+\emph{Counterfactual Accuracy}, \emph{Fidelity}, and \emph{Modification
+Ratio}. CF-ACC measure the proportion of \(G^c\)s that have different
 predicted labels than there associated observed graph: \begin{equation}
         \text{CF-ACC}(G, G^c) = I(\hat Y_{G^c} \neq \hat Y_{G}).
 \end{equation}
@@ -700,9 +700,9 @@ and \(G\) relative to the size of the original graph:
     \text{MR}(A_0, \hat A_0) = \dfrac{\sum_{i, j} |A_0[i, j] - \hat A_0(i, j)|}{\sum_{i, j} A_0[i, j]}. 
 \end{equation}
 
-\quad Similar to GNNInterpreter, the authors report the mean predicted
+\quad Similar to GNNInterpreter, the authors reported the mean predicted
 probability for the targeted class. Using a maximum of 6 nodes, the
-author were able to achieve a mean of 0.832 on the MUTAG dataset. Since
+authors were able to achieve a mean of 0.832 on the MUTAG dataset. Since
 the counterfactual explanation are generated on a per observation basis,
 the authors compared their method to other popular instance-level
 explanation methods.
@@ -713,8 +713,8 @@ explanation methods.
 
 }
 
-\caption{\label{fig-D4-CF-ACC}Comparison of the CF-ACC relative to MR of
-various methods and datasets. A copy of Figure 4 from Chen et al.
+\caption{\label{fig-D4-CF-ACC}Comparison of the CF-ACC relative to MR
+across various methods and datasets. A copy of Figure 4 from Chen et al.
 (\protect\hyperlink{ref-Chen_Wu_Gupta_Ying_2023}{2023}).}
 
 \end{figure}
@@ -722,12 +722,12 @@ various methods and datasets. A copy of Figure 4 from Chen et al.
 Figure~\ref{fig-D4-CF-ACC} displays that D4Explainer can flip the
 prediction on roughly 80\% of observed graphs at most modification
 levels. Missing from the plot is a variance measure. It is possible that
-the counterfactual accuracy varies more between different data splits or
-hyperparameter than the other methods. Figure~\ref{fig-D4-MMD} indicates
-that the D4Explainer generated graphs tend to have feature distributions
-that are closer to the original dataset; however, there might be a
-hidden class bias. The distributions might only be close for the
-majority class, skewing the averages.
+the counterfactual accuracy of D4Explainer varies more between different
+data splits or hyperparameter than the other methods.
+Figure~\ref{fig-D4-MMD} indicates that the D4Explainer generated graphs
+tend to have feature distributions that are closer to the original
+dataset; however, there might be a hidden class bias. The distributions
+might only be close for the majority class, skewing the averages.
 
 \begin{figure}
 
@@ -760,9 +760,9 @@ relation with the target class, or it could be important because of a
 strong negative relation with the other classes. ProtGNN
 (\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{Zhang et al. 2021})
 uses the prototype modeling paradigm to create a GNN that is
-\emph{interpretable}. Prototype based models make prediction by
+\emph{interpretable}. Prototype based models make predictions by
 comparing new inputs to exemplar cases or \emph{learned prototypes} of
-each class. This results in an interpretable model because, as long as
+each class. This results in an interpretable model because as long as
 the prediction function applied to the prototype similarity scores is
 simple, the reasoning for any given prediction will be clear.
 Intuitively, this can be thought of as using a black-box model to
@@ -776,7 +776,7 @@ of \(G\), \(Y_G\). Now, let \(f(G; \ \Omega_f) = \hat p_G\) be a graph
 encoder function that maps any graph into the prototype vector space,
 where \(\Omega_f\) is the set of trainable parameters. \(f\) is
 generally one of the standard GNN architectures. Since ProtGNN was
-primarily designed to be a graph classification model, the author
+primarily designed to be a graph classification model, the authors
 optimized for predictive power using:\\
 \begin{equation}
     \mathcal{L}_{\text{prot}}(\Omega_f, \ \Omega_\psi, \ p_1, \dots, p_{mC} \ | \ G)= \text{CrsEnt} \left[\psi \left(sim\left(\hat p_G, p_1\right), \dots, sim\left(\hat p_G, p_{mC}\right); \ \Omega_\psi\right), \ Y_G \right], 
@@ -784,10 +784,10 @@ optimized for predictive power using:\\
 
 where \(\psi\) is any simple prediction model with trainable parameters
 \(\Omega_\psi\) and \(sim\) is any vector similarity function. ProtGNN
-uses a full connected layer with a softmax output activation for
+uses a fully connected layer with a softmax output activation for
 \(\psi\), which is similar to a multinomial regression model. To address
 similar out-of-distribution concerns discussed earlier, the authors
-include three additional loss terms as constraints. The cluster loss
+included three additional loss terms as constraints. The cluster loss
 ensure that each embedding is close to at least one prototype assigned
 to its ground truth class:\\
 \begin{equation}
@@ -813,7 +813,7 @@ Carlo Tree Search (MCTS) algorithm
 (\protect\hyperlink{ref-Coulom2006EfficientSA}{Coulom 2006}) to identify
 the subgraph within the observed graphs of the prototype's class that
 has an embedding closest to the given prototype. Specifically, the
-author use the MCTS to select an optimal sequence of pruning actions.
+authors use the MCTS to select an optimal sequence of pruning actions.
 Let \(\mathcal{G}_{0, \ i, \dots, j}\) represent the subgraph resulting
 from the sequence of pruning actions
 \(\text{act}_i,\dots, \text{act}_j\), where \(\mathcal{G}_0\), the root
@@ -825,13 +825,13 @@ chosen node is \emph{expanded} by adding a child node
 \(\text{act}_k\). To limit the search space, the authors restrict
 \(\text{act}_k\) to be the removal of a peripheral node with minimum
 degree. Third, the reward for the sequence of actions \(i, \dots, j, k\)
-is estimated via a Monte Carlo \emph{simulation} where additional random
-actions are taken until a subgraph of the desired size is produced. The
-sampled embeddings are then compared to the prototype vector and the
-similarities are averaged. Finally, the child node's estimated score is
-then \emph{backpropagated} to update the estimated scores of all its
-parent nodes. After a fixed number of iterations through the observed
-graphs from the prototype's class, the decision path with the highest
+is estimated via a Monte Carlo \emph{simulation}, where additional
+random actions are taken until a subgraph of the desired size is
+produced. The sampled embeddings are then compared to the prototype
+vector and the similarities are averaged. Finally, the child node's
+estimated score is then \emph{backpropagated} to update the estimated
+scores of all its parent nodes. After a fixed number of iterations
+through the observed graphs, the decision path with the highest
 resulting score is selected to produce the ultimate prototype
 projection. In addition to finding the closest subgraph in the observed
 class, the authors also suggest a method for finding similar subgraphs
@@ -851,21 +851,7 @@ The authors denote the version of the model that utilizes this
 \emph{conditional subgraph sampling module} as \textbf{ProtGNN+}.
 
 \quad ProtGNN achieves similar or better graph classification accuracy
-than state of the art models across 5 standard benchmark datasets (see
-Figure~\ref{fig-prot-acc-table}).
-
-\begin{figure}
-
-{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{figures/prot_acc_table.png}
-
-}
-
-\caption{\label{fig-prot-acc-table}A copy of the quantitative modeling
-results report in Table 1 of Zhang et al.
-(\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{2021}).}
-
-\end{figure}
-
+than state-of-the-art models across 5 standard benchmark datasets.
 Figure~\ref{fig-prot-acc-table} also indicates that ProtGNN is robust to
 the choice of embedding model as there seems to be benefits across
 various GNN architectures. The authors do note that the computational
@@ -877,6 +863,25 @@ demonstrates that the output of ProtGNN is similar to a simple
 regression model. The prototypes can be thought of as features, the
 similar subgraphs and similarity scores as the observed feature values,
 and the class connections as the marginal effects on the prediction.
+Since prototypes from every class are used for the classification,
+ProtGNN can also be used for counterfactual type analysis. For any given
+prediction, researchers can determine why a certain classification was
+made and why the other classes were not selected.
+Figure~\ref{fig-prot-diagram} displays both a strong similarity to the
+mutagenic prototypes as well as a weaker relation to the non-mutagenic
+prototypes.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.9\textwidth,height=\textheight]{figures/prot_acc_table.png}
+
+}
+
+\caption{\label{fig-prot-acc-table}A copy of the quantitative modeling
+results reported in Table 1 of Zhang et al.
+(\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{2021}).}
+
+\end{figure}
 
 \begin{figure}
 
@@ -889,14 +894,6 @@ MUTAG dataset taken from Figure 3 in Zhang et al.
 (\protect\hyperlink{ref-Zhang_Liu_Wang_Lu_Lee_2021}{2021}).}
 
 \end{figure}
-
-Since prototypes from every class are used for the classification,
-ProtGNN can also be used for counterfactual type analysis. For any given
-predictions, researcher can determine why a certain classification was
-made and why the other classes were not selected.
-Figure~\ref{fig-prot-diagram} display both a strong similarity to the
-mutagenic prototypes as well as a weaker relation to the non-mutagenic
-prototypes.
 
 \hypertarget{synthesis-of-core-papers}{%
 \section{Synthesis of Core Papers}\label{synthesis-of-core-papers}}
@@ -930,7 +927,7 @@ model.
 problem that plagues generative explanations. GNN models are not robust
 to out-of-distribution or unrealistic graphs, which is to say that
 explainee models can still return a confident classification for a
-complete random graph (see Figure~\ref{fig-random-baseline}).
+completely random graph (see Figure~\ref{fig-random-baseline}).
 D4Explainer partial resolves this issue by restricting generated node
 and edge features to the observed values. This ensures that the features
 of any generated graph will not be out-of-distribution; however, this
@@ -1000,22 +997,22 @@ We trained the reimplemented model on MUTAG
 (\protect\hyperlink{ref-Debnath_1991}{Debnath et al. 1991}), a standard
 benchmark graph classification dataset. MUTAG consists of nitroaromatic
 compounds, with the goal being to predict their mutagenicity on
-Salmonella typhimurium. Each observation is a graphs representing a
+Salmonella typhimurium. Each observation is a graph representing a
 chemical structure, where vertices denote atoms and edges represent
 bonds. For our explainee model, we also implemented a 3-layer GCN model.
 There are slight variations between the architectures and training
 hyperparameters, but the accuracies are comparable, 86\% (ours) and 92\%
 (theirs). We additionally reimplement D4Explainer's counterfactual
 generator. Although not discussed in the original paper, this model can
-also be used to produce model level explanations. We simply randomly
-sample a graph from the opposite class and take the generated
+also be used to produce model-level explanations. We simply randomly
+sample an observed graph from the opposite class and take the generated
 counterfactual graph as our explanation.
 
 \hypertarget{results}{%
 \subsection{Results}\label{results}}
 
 \begin{longtable}[t]{llllll}
-\caption{Comparison of Original and Reimplement Model Results.} \label{tab-results} \\
+\caption{Comparison of Original and Reimplemented Model Results.} \label{tab-results} \\
 \toprule
   & Predictions & Density & Deg. & Clus. & Spec.\\
 \midrule
@@ -1070,12 +1067,12 @@ found
 \quad We were unable to replicate GNNInterpreter's 0 variance predictive
 accuracy, but the values are comparable given the lack of extensive
 hyperparameter tuning (see Table \ref{tab-results}). The predictions are
-similarity superior to the original D4Explainer results, 0.93 and 0.98
-v. 0.92. Our explainee model has a bias towards the mutagenic class
-(class 1), which can explain the greater deviation between the class 0
-models. Another limiting factor is a lower set maximum number of nodes.
-We set it to 8 to make the results more comparable to the model-level
-explanation reported by D4Explainer. Surprisingly, D4Explainer produces
+similarly superior to the original D4Explainer results, 0.93 and 0.98 v.
+0.92. Our explainee model has a bias towards the mutagenic class (class
+1), which can explain the greater deviation between the class 0 models.
+Another limiting factor is a lower set maximum number of nodes. We set
+it to 8 to make the results more comparable to the model-level
+explanations reported by D4Explainer. Surprisingly, D4Explainer produces
 sparser graphs than GNNInterpreter in terms of average density, 0.38 and
 0.32 v. 0.315. This is despite the fact that D4Explainer has no explicit
 penalty in the loss function. Based on the MMD statistics, D4Explainer
@@ -1106,9 +1103,9 @@ least discriminative predictions. The latter makes sense, since the goal
 of the counterfactual loss is to flip the prediction, not necessarily
 maximize confidence. One the other hand, this model demonstrates that it
 is possible to generate sparse graphs with similar degree and clustering
-distributions. Visually the counterfactual explanation make sense. Graph
-(b) eliminated the red or chlorine atom which is typically associated
-with non-mutagenic compounds
+distributions. Visually the counterfactual explanations make sense.
+Graph (b) eliminated the red or chlorine atom which is typically
+associated with non-mutagenic compounds
 (\protect\hyperlink{ref-Yuan_Tang_Hu_Ji_2020}{Yuan et al. 2020}). Graph
 (d) corrupted 3 of the 4 \(NO_2\) groups, which is in line with
 GNNInterpreter's findings that multiple \(NO_2\) groups is a strong
@@ -1124,7 +1121,7 @@ distributional parameters. Alternatively, the generator could be
 replaced with a diffusion model without any modififcation to the loss.
 Second, the generator model should use class or prediction information.
 D4Explainer's model-level sampling algorithm is less efficient and less
-accuracate than GNNInterpreter's direct optimization. The modified
+accurate than GNNInterpreter's direct optimization. The modified
 sampling algorithm demonstrates that single-step denoising can still
 maintain low MMD statistics. Adding \(\mathcal{L}_\text{pred}\)
 (\ref{l-pred}) and/or \(\mathcal{L}_\text{embed}\) (\ref{l-embed}) could
@@ -1140,7 +1137,7 @@ et al. 2023}).
 \subsection{Proofs}\label{sec-proof}}
 
 \textbf{Proof of Equation \ref{gumbel-max-eq}:} WLOG assume we want to
-sample for a categorical distribution \(\text{cat}(\theta_\text{cat})\)
+sample from a categorical distribution \(\text{cat}(\theta_\text{cat})\)
 with a set of \(W\) categories each with a probability \[
 \pi_\omega = \dfrac{\theta_\text{cat}[\omega]}{\sum_{i \in W}\theta_\text{cat}[i]}.
 \]
@@ -1160,7 +1157,7 @@ Now, let \(M_i\) denote a random variable that follows a
     Pr[D = \omega] 
         &= \mathams{E}_{M_\omega} 
             \prod_{i \in W \setminus \omega} Pr(M_i < m_\omega) 
-            \text{ i.i.d location shifted Gumbel distributions.} \\ 
+            \text{ i.i.d. location shifted Gumbel distributions.} \\ 
         &= \mathams{E}_{M_\omega} 
             \prod_{i \in W \setminus \omega} \exp 
                 \left(-e^{\log \theta_\text{cat}[i] - m_\omega} \right)
@@ -1188,7 +1185,7 @@ Now, let \(M_i\) denote a random variable that follows a
             \exp \left( -m_\omega \right) 
             \exp \left( -e^{-m_\omega} \sum_{i \in W}
                 \theta_\text{cat}[i]  \right) \ dm 
-                \text{ From the above definition of } \pi_\omega \\
+                \text{ From the above definition of } \pi_\omega. \\
         &= \pi_\omega \sum_{i \in W} \theta_\text{cat}[i]
             \dfrac{\exp\left( -e^{-m_\omega} \sum_{i \in W} \theta_\text{cat}[i] \right)
                 }{\sum_{i \in W} \theta_\text{cat}[i]} \bigg|_{-\infty}^\infty \\ 
@@ -1310,9 +1307,9 @@ problem (QAP) solves both the time complexity and derivative issue
 (\protect\hyperlink{ref-wang2024pygm}{R. Wang et al. 2024}).
 
 \quad Let \(G_1\) and \(G_2\) be graphs we wish to compute the GED
-between. QAP approximates this be solving the following optimization
+between. QAP approximates this by solving the following optimization
 problem: \begin{equation} \label{QAP-obj}
-    \mathcal{L}_{\text{GED}}(G_1, G_2) = \underset{M}{\max} \ \text{vec}(M) \ K(G_1, G_2) \ \text{vec}(M)^T.
+    \mathcal{L}_{\text{GED}}(G_1, G_2) = - \underset{M}{\max} \ \text{vec}(M) \ K(G_1, G_2) \ \text{vec}(M)^T.
 \end{equation}
 
 Here \(M\) is a \((n_1 \times n_2)\) binary node matching matrix and
@@ -1333,7 +1330,7 @@ the following similarity metric for every pair of nodes and edges:
 \end{equation}
 
 where \(\phi(.)\) is the normalized cosine distance. \(1 - \phi(.)\)
-will return 2 is the vectors are in opposite directions, 1 if the
+will return 2 if the vectors are in opposite directions, 1 if the
 vectors are orthogonal, and 0 if they are pointing in the same
 direction; however, one-hot encoded vectors will never be in opposite
 directions, so the different types of feature must be weighted
@@ -1388,9 +1385,6 @@ based on the distance between cluster means.
 \hspace{1em}Cluster 2 & (0.7843, 0.7947) & (0.7571, 0.7715)\\
 \hspace{1em}Cluster 3 & (0.6164, 0.6286) & (0.8256, 0.8352)\\
 \bottomrule
-\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{1} Node Means: $\mu_0 = -1$, $\mu_1 = 1$, $\mu_{out1} = 0$, 
-                    $\mu_{out2}$ = -5.}\\
-\multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{2} 95\% t intervals on \% difference.}\\
 \multicolumn{3}{l}{\rule{0pt}{1em}\textsuperscript{*} The code for these simulation results can be found \href{https://github.com/Tiny-Quant/GNN-EGG/blob/pre-release/notebooks/CS-8321-Final-Paper-Code.ipynb}{here}.}\\
 \end{longtable}
 
@@ -1442,7 +1436,7 @@ structural nuances, potentially complementing each other.
 cannot produce out-of-sample insights. These two issue can be resolve by
 using graph protypes as opposed to vectors. Redefine the prototype
 vectors, \(p_k\), to be: \begin{equation}
-    p_k = f(\tilde{G}_k; \ \Omega_f), \text{ where } \tilde{G}_k = (\tilde{X}_k, \tilde{A}_k, \tilde{E}_k)
+    p_k = f(\tilde{G}_k; \ \Omega_f), \text{ where } \tilde{G}_k = (\tilde{X}_k, \tilde{A}_k, \tilde{E}_k).
 \end{equation}
 
 Redefining the prototypes in this manner maintains compatability with
@@ -1455,11 +1449,13 @@ complex loss function could be:\\
 \end{equation}
 
 where \(G_1 \dots G_\text{mC}\) are the subgraphs induced by the
-predicted masks. Figure~\ref{fig-graph-prot_diag} depicts the general
-flow of such a network. Using graph prototypes also eliminates the
-computational bottleneck posed by the MCTS projection step. Furthermore,
-since \(X_{p_k}, A_{p_k}, E_{p_k}\) are free trainable parameters, they
-could contain structure not observed in the original dataset. We expect
+predicted masks. Note that there is extensive literature in node and
+edge prediction GNN models that could be used to estimate the ideal
+masks. Figure~\ref{fig-graph-prot_diag} depicts the general flow of such
+a network. Using graph prototypes eliminates the computational
+bottleneck posed by the MCTS projection step. Furthermore, since
+\(X_{p_k}, A_{p_k}, E_{p_k}\) are free trainable parameters, they could
+contain structures not observed in the original dataset. We expect
 sample size to be a limiting factor. Although ProtGNN uses fairly
 high-dimensional vectors for its prototypes, graph prototypes might
 still introduce exponentially more parameters. The size and sparsity of
